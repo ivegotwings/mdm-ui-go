@@ -147,6 +147,7 @@ func (b broadcast) Join(room string, socket socketio.Conn) error {
 	}
 	sockets.Set(socket.ID(), socket)
 	b.rooms.Set(room, sockets)
+	socket.Join(room)
 	return nil
 }
 

@@ -9,6 +9,7 @@ import (
 	"os"
 
 	socketio "github.com/googollee/go-socket.io"
+	"github.com/ivegotwings/mdm-ui-go/redis"
 )
 
 type Config struct {
@@ -38,6 +39,7 @@ func baseRouter(w http.ResponseWriter, r *http.Request) {
 func main() {
 	server, err := socketio.NewServer(nil)
 	if err != nil {
+		fmt.Println(err)
 		log.Fatal(err)
 	}
 
@@ -50,10 +52,14 @@ func main() {
 	opts["host"] = config.Redis.Host
 	opts["port"] = config.Redis.Port
 
-	//redisBroadCastAdaptor = redis.Redis(opts)
+	redisBroadCastAdaptor := redis.Redis(opts)
 
-	server.OnConnect("/", func(so socketio.Conn) error {
+	server.OnConnect("", func(so socketio.Conn) error {
 		so.SetContext("")
+		err := redisBroadCastAdaptor.Join("testroom", so)
+		if err != nil {
+			fmt.Println("Redis BroadCastManager- Failure to connect", err)
+		}
 		fmt.Println("connected:", so.ID())
 		log.Println("connected:", so.ID())
 
@@ -63,6 +69,9 @@ func main() {
 	server.OnError("error", func(so socketio.Conn, err error) {
 		log.Println("error:", err)
 	})
+
+	go server.Serve()
+	defer server.Close()
 
 	http.Handle("/socket.io/", server)
 	http.Handle("/", http.HandlerFunc(baseRouter))
