@@ -8,8 +8,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/ivegotwings/mdm-ui-go/redis"
+
 	socketio "github.com/googollee/go-socket.io"
-	redis "github.com/ivegotwings/go-socket.io-redis"
 )
 
 type Config struct {
