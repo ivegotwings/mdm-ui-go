@@ -9,12 +9,13 @@ import (
 	"os"
 
 	socketio "github.com/googollee/go-socket.io"
+	redis "github.com/ivegotwings/go-socket.io-redis"
 )
 
 type Config struct {
-	RedisConfig struct {
-		host string
-		port string
+	Redis struct {
+		Host string
+		Port string
 	}
 }
 
@@ -23,7 +24,6 @@ func LoadConfiguration(file string) Config {
 	configFile, err := os.Open(file)
 	defer configFile.Close()
 	byteValue, _ := ioutil.ReadAll(configFile)
-	fmt.Println(byteValue)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
@@ -38,24 +38,29 @@ func main() {
 	}
 
 	var config Config = LoadConfiguration("config.json")
-	fmt.Println(string(config))
-	// opts := make(map[string]string)
-	// server.SetAdaptor(redis.Redis(opts))
+	b, err := json.Marshal(config)
+	fmt.Println("Redis Config-")
+	fmt.Println(string(b))
 
-	// server.On("connection", func(so socketio.Socket) {
-	// 	log.Println("on connection")
-	// 	so.Join("chat")
-	// 	so.On("chat message", func(msg string) {
-	// 		log.Println("emit:", so.Emit("chat message", msg))
-	// 		so.BroadcastTo("chat", "chat message", msg)
-	// 	})
-	// 	so.On("disconnection", func() {
-	// 		log.Println("on disconnect")
-	// 	})
-	// })
-	// server.On("error", func(so socketio.Socket, err error) {
-	// 	log.Println("error:", err)
-	// })
+	opts := make(map[string]string)
+	opts["host"] = config.Redis.Host
+	opts["port"] = config.Redis.Port
+	server.SetAdaptor(redis.Redis(opts))
+
+	server.On("connection", func(so socketio.Socket) {
+		log.Println("on connection")
+		so.Join("chat")
+		so.On("chat message", func(msg string) {
+			log.Println("emit:", so.Emit("chat message", msg))
+			so.BroadcastTo("chat", "chat message", msg)
+		})
+		so.On("disconnection", func() {
+			log.Println("on disconnect")
+		})
+	})
+	server.On("error", func(so socketio.Socket, err error) {
+		log.Println("error:", err)
+	})
 
 	http.Handle("/socket.io/", server)
 	http.Handle("/", http.FileServer(http.Dir("./asset")))

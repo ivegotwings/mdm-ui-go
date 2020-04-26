@@ -47,12 +47,32 @@
   revision = "b65e62901fc1c0d968042419e74789f6af455eb9"
   version = "v1.4.2"
 
+[[projects]]
+  branch = "master"
+  digest = "1:6505032f0bd910f17b57966c8b69e624c44fb2a995738c49165acaafd7716227"
+  name = "github.com/ivegotwings/go-socket.io-redis"
+  packages = [
+    ".",
+    "cmap_string_cmap",
+    "cmap_string_socket",
+  ]
+  pruneopts = "UT"
+  revision = "7d1e21c08e9bea4835f14b05a409452be0636a2e"
+
+[[projects]]
+  branch = "master"
+  digest = "1:0e1e5f960c58fdc677212fcc70e55042a0084d367623e51afbdb568963832f5d"
+  name = "github.com/nu7hatch/gouuid"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/garyburd/redigo/redis",
     "github.com/googollee/go-socket.io",
+    "github.com/ivegotwings/go-socket.io-redis",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

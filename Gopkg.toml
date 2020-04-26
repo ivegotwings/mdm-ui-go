@@ -26,13 +26,13 @@
 
 
 [[constraint]]
-  name = "github.com/garyburd/redigo"
-  version = "1.6.0"
+  name = "github.com/googollee/go-socket.io"
+  version = "1.4.3"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/ivegotwings/go-socket.io-redis"
 
 [prune]
   go-tests = true
   unused-packages = true
-
-[[constraint]]
-  name = "github.com/googollee/go-socket.io"
-  version = "1.0.1"
