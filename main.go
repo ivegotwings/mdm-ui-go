@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/ivegotwings/mdm-ui-go/redis"
-
 	socketio "github.com/googollee/go-socket.io"
 )
 
@@ -32,6 +30,11 @@ func LoadConfiguration(file string) Config {
 	return config
 }
 
+func baseRouter(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Server", "A Go Web Server")
+	w.WriteHeader(200)
+}
+
 func main() {
 	server, err := socketio.NewServer(nil)
 	if err != nil {
@@ -46,25 +49,24 @@ func main() {
 	opts := make(map[string]string)
 	opts["host"] = config.Redis.Host
 	opts["port"] = config.Redis.Port
-	server.SetAdaptor(redis.Redis(opts))
 
-	server.On("connection", func(so socketio.Socket) {
-		log.Println("on connection")
-		so.Join("chat")
-		so.On("chat message", func(msg string) {
-			log.Println("emit:", so.Emit("chat message", msg))
-			so.BroadcastTo("chat", "chat message", msg)
-		})
-		so.On("disconnection", func() {
-			log.Println("on disconnect")
-		})
+	//redisBroadCastAdaptor = redis.Redis(opts)
+
+	server.OnConnect("/", func(so socketio.Conn) error {
+		so.SetContext("")
+		fmt.Println("connected:", so.ID())
+		log.Println("connected:", so.ID())
+
+		//		so.Join("chat")
+		return nil
 	})
-	server.On("error", func(so socketio.Socket, err error) {
+	server.OnError("error", func(so socketio.Conn, err error) {
 		log.Println("error:", err)
 	})
 
 	http.Handle("/socket.io/", server)
-	http.Handle("/", http.FileServer(http.Dir("./asset")))
-	log.Println("Serving at localhost:5000...")
-	log.Fatal(http.ListenAndServe(":5000", nil))
+	http.Handle("/", http.HandlerFunc(baseRouter))
+	fmt.Println("Serving at localhost:5007...")
+	log.Println("Serving at localhost:5007...")
+	log.Fatal(http.ListenAndServe(":5007", nil))
 }

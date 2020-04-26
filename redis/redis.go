@@ -34,7 +34,7 @@ type broadcast struct {
 //   "port": "6379"
 //   "prefix": "socket.io"
 // }
-func Redis(opts map[string]string) socketio.BroadcastAdaptor {
+func Redis(opts map[string]string) *broadcast {
 	b := broadcast{
 		rooms: cmap_string_cmap.New(),
 	}
@@ -99,7 +99,7 @@ func Redis(opts map[string]string) socketio.BroadcastAdaptor {
 		}
 	}()
 
-	return b
+	return &b
 }
 
 func (b broadcast) onmessage(channel string, data []byte) error {
@@ -119,7 +119,7 @@ func (b broadcast) onmessage(channel string, data []byte) error {
 
 	args := out["args"]
 	opts := out["opts"]
-	ignore, ok := opts[0].(socketio.Socket)
+	ignore, ok := opts[0].(socketio.Conn)
 	if !ok {
 		log.Println("ignore is not a socket")
 		ignore = nil
@@ -140,22 +140,22 @@ func (b broadcast) onmessage(channel string, data []byte) error {
 	return nil
 }
 
-func (b broadcast) Join(room string, socket socketio.Socket) error {
+func (b broadcast) Join(room string, socket socketio.Conn) error {
 	sockets, ok := b.rooms.Get(room)
 	if !ok {
 		sockets = cmap_string_socket.New()
 	}
-	sockets.Set(socket.Id(), socket)
+	sockets.Set(socket.ID(), socket)
 	b.rooms.Set(room, sockets)
 	return nil
 }
 
-func (b broadcast) Leave(room string, socket socketio.Socket) error {
+func (b broadcast) Leave(room string, socket socketio.Conn) error {
 	sockets, ok := b.rooms.Get(room)
 	if !ok {
 		return nil
 	}
-	sockets.Remove(socket.Id())
+	sockets.Remove(socket.ID())
 	if sockets.IsEmpty() {
 		b.rooms.Remove(room)
 		return nil
@@ -165,7 +165,7 @@ func (b broadcast) Leave(room string, socket socketio.Socket) error {
 }
 
 // Same as Broadcast
-func (b broadcast) Send(ignore socketio.Socket, room, message string, args ...interface{}) error {
+func (b broadcast) Send(ignore socketio.Conn, room, message string, args ...interface{}) error {
 	sockets, ok := b.rooms.Get(room)
 	if !ok {
 		return nil
@@ -173,13 +173,10 @@ func (b broadcast) Send(ignore socketio.Socket, room, message string, args ...in
 	for item := range sockets.Iter() {
 		id := item.Key
 		s := item.Val
-		if ignore != nil && ignore.Id() == id {
+		if ignore != nil && ignore.ID() == id {
 			continue
 		}
-		err := (s.Emit(message, args...))
-		if err != nil {
-			log.Println("error broadcasting:", err)
-		}
+		s.Emit(message, args...)
 	}
 
 	opts := make([]interface{}, 3)
