@@ -95,6 +95,31 @@ func main() {
 	server.OnError("error", func(so socketio.Conn, err error) {
 		log.Println("error:", err)
 	})
+	server.OnEvent("/", "event:adduser", func(so socketio.Conn, msg string) {
+		fmt.Println("event:adduser", msg)
+		var _userInfo interface{}
+		err := json.Unmarshal([]byte(msg), &_userInfo)
+		if err != nil {
+			fmt.Println("error processing event:adduser")
+		} else {
+			userInfo, ok := _userInfo.(map[string]interface{})
+			fmt.Println("debug ", userInfo, ok)
+			if ok {
+				//join user room
+				user_room := "socket_room_tenant_" + userInfo["tenantId"].(string) + "_user_" + userInfo["userId"].(string)
+				err = redisBroadCastAdaptor.Join(user_room, so)
+				//join tenant room
+				tenant_room := "socket_room_tenant_" + userInfo["tenantId"].(string)
+				err = redisBroadCastAdaptor.Join(tenant_room, so)
+				if err != nil {
+					fmt.Println("Redis BroadCastManager- Failure to connect", err)
+				} else {
+					fmt.Println("adding new user to rooms", user_room, tenant_room)
+				}
+			}
+		}
+
+	})
 
 	go server.Serve()
 	defer server.Close()
