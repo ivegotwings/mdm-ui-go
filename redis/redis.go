@@ -140,7 +140,7 @@ func (b Broadcast) onmessage(channel string, data []byte) error {
 	for _, arg := range args {
 		fmt.Printf("- %d\n", arg)
 	}
-	b.Send(ignore, room, message, args...)
+	b.SendSocket(ignore, room, message, args...)
 	return nil
 }
 
@@ -171,34 +171,37 @@ func (b Broadcast) Leave(room string, socket socketio.Conn) error {
 
 // Same as Broadcast
 func (b Broadcast) Send(ignore socketio.Conn, room, message string, args ...interface{}) error {
-	sockets, ok := b.rooms.Get(room)
-	if !ok {
-		opts := make([]interface{}, 3)
-		opts[0] = ignore
-		opts[1] = room
-		opts[2] = message
-		in := map[string][]interface{}{
-			"args": args,
-			"opts": opts,
-		}
-
-		buf, err := json.Marshal(in)
-		_ = err
-
-		if !b.remote {
-			b.pub.Conn.Do("PUBLISH", b.key, buf)
-		}
-		b.remote = false
-		return nil
+	opts := make([]interface{}, 3)
+	opts[0] = ignore
+	opts[1] = room
+	opts[2] = message
+	in := map[string][]interface{}{
+		"args": args,
+		"opts": opts,
 	}
-	for item := range sockets.Iter() {
-		fmt.Println("socket", item)
-		id := item.Key
-		s := item.Val
-		if ignore != nil && ignore.ID() == id {
-			continue
+
+	buf, err := json.Marshal(in)
+	_ = err
+
+	if !b.remote {
+		b.pub.Conn.Do("PUBLISH", b.key, buf)
+	}
+	b.remote = false
+	return nil
+}
+func (b Broadcast) SendSocket(ignore socketio.Conn, room, message string, args ...interface{}) error {
+	sockets, ok := b.rooms.Get(room)
+	if ok {
+		for item := range sockets.Iter() {
+			id := item.Key
+			s := item.Val
+			if ignore != nil && ignore.ID() == id {
+				continue
+			}
+			s.Emit(message, args...)
 		}
-		s.Emit(message, args...)
+	} else {
+		fmt.Println("error sending message to room", room)
 	}
 	return nil
 }
