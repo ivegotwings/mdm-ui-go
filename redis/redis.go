@@ -1,8 +1,8 @@
 package redis
 
 import (
+	"fmt"
 	"log"
-	"strings"
 
 	"github.com/ivegotwings/mdm-ui-go/cmap_string_socket"
 
@@ -16,7 +16,7 @@ import (
 	"encoding/json"
 )
 
-type broadcast struct {
+type Broadcast struct {
 	host   string
 	port   string
 	pub    redis.PubSubConn
@@ -34,8 +34,8 @@ type broadcast struct {
 //   "port": "6379"
 //   "prefix": "socket.io"
 // }
-func Redis(opts map[string]string) *broadcast {
-	b := broadcast{
+func Redis(opts map[string]string) *Broadcast {
+	b := Broadcast{
 		rooms: cmap_string_cmap.New(),
 	}
 
@@ -102,13 +102,14 @@ func Redis(opts map[string]string) *broadcast {
 	return &b
 }
 
-func (b broadcast) onmessage(channel string, data []byte) error {
-	pieces := strings.Split(channel, "#")
-	uid := pieces[len(pieces)-1]
-	if b.uid == uid {
-		log.Println("ignore same uid")
-		return nil
-	}
+func (b Broadcast) onmessage(channel string, data []byte) error {
+	//allow same channel communication
+	//pieces := strings.Split(channel, "#")
+	//uid := pieces[len(pieces)-1]
+	// if b.uid == uid && b.uid != "1" {
+	// 	log.Println("ignore same uid")
+	// 	return nil
+	// }
 
 	var out map[string][]interface{}
 	err := json.Unmarshal(data, &out)
@@ -136,11 +137,14 @@ func (b broadcast) onmessage(channel string, data []byte) error {
 	}
 
 	b.remote = true
+	for _, arg := range args {
+		fmt.Printf("- %d\n", arg)
+	}
 	b.Send(ignore, room, message, args...)
 	return nil
 }
 
-func (b broadcast) Join(room string, socket socketio.Conn) error {
+func (b Broadcast) Join(room string, socket socketio.Conn) error {
 	sockets, ok := b.rooms.Get(room)
 	if !ok {
 		sockets = cmap_string_socket.New()
@@ -151,7 +155,7 @@ func (b broadcast) Join(room string, socket socketio.Conn) error {
 	return nil
 }
 
-func (b broadcast) Leave(room string, socket socketio.Conn) error {
+func (b Broadcast) Leave(room string, socket socketio.Conn) error {
 	sockets, ok := b.rooms.Get(room)
 	if !ok {
 		return nil
@@ -166,12 +170,29 @@ func (b broadcast) Leave(room string, socket socketio.Conn) error {
 }
 
 // Same as Broadcast
-func (b broadcast) Send(ignore socketio.Conn, room, message string, args ...interface{}) error {
+func (b Broadcast) Send(ignore socketio.Conn, room, message string, args ...interface{}) error {
 	sockets, ok := b.rooms.Get(room)
 	if !ok {
+		opts := make([]interface{}, 3)
+		opts[0] = ignore
+		opts[1] = room
+		opts[2] = message
+		in := map[string][]interface{}{
+			"args": args,
+			"opts": opts,
+		}
+
+		buf, err := json.Marshal(in)
+		_ = err
+
+		if !b.remote {
+			b.pub.Conn.Do("PUBLISH", b.key, buf)
+		}
+		b.remote = false
 		return nil
 	}
 	for item := range sockets.Iter() {
+		fmt.Println("socket", item)
 		id := item.Key
 		s := item.Val
 		if ignore != nil && ignore.ID() == id {
@@ -179,22 +200,5 @@ func (b broadcast) Send(ignore socketio.Conn, room, message string, args ...inte
 		}
 		s.Emit(message, args...)
 	}
-
-	opts := make([]interface{}, 3)
-	opts[0] = ignore
-	opts[1] = room
-	opts[2] = message
-	in := map[string][]interface{}{
-		"args": args,
-		"opts": opts,
-	}
-
-	buf, err := json.Marshal(in)
-	_ = err
-
-	if !b.remote {
-		b.pub.Conn.Do("PUBLISH", b.key, buf)
-	}
-	b.remote = false
 	return nil
 }

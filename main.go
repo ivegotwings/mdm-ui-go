@@ -35,6 +35,33 @@ func baseRouter(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Server", "A Go Web Server")
 	w.WriteHeader(200)
 }
+func notifyRouterWrapper(redisBroadCastAdaptor *redis.Broadcast) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Error reading request body",
+					http.StatusInternalServerError)
+			}
+			var message []interface{}
+			err = json.Unmarshal(body, &message)
+			if err != nil {
+				fmt.Println("ERR", err)
+				log.Println("notify error in processing body", err)
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			fmt.Println(message)
+			redisBroadCastAdaptor.Send(nil, "testroom", "event:notification", message...)
+			fmt.Fprint(w, "POST done")
+		} else {
+			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		}
+		w.Header().Set("Server", "A Go Web Server")
+		w.WriteHeader(200)
+	}
+
+}
 
 func main() {
 	server, err := socketio.NewServer(nil)
@@ -51,7 +78,7 @@ func main() {
 	opts := make(map[string]string)
 	opts["host"] = config.Redis.Host
 	opts["port"] = config.Redis.Port
-
+	//notifiy channel
 	redisBroadCastAdaptor := redis.Redis(opts)
 
 	server.OnConnect("", func(so socketio.Conn) error {
@@ -63,7 +90,6 @@ func main() {
 		fmt.Println("connected:", so.ID())
 		log.Println("connected:", so.ID())
 
-		//		so.Join("chat")
 		return nil
 	})
 	server.OnError("error", func(so socketio.Conn, err error) {
@@ -75,6 +101,8 @@ func main() {
 
 	http.Handle("/socket.io/", server)
 	http.Handle("/", http.HandlerFunc(baseRouter))
+	http.Handle("/notify", http.HandlerFunc(notifyRouterWrapper(redisBroadCastAdaptor)))
+
 	fmt.Println("Serving at localhost:5007...")
 	log.Println("Serving at localhost:5007...")
 	log.Fatal(http.ListenAndServe(":5007", nil))
