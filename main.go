@@ -95,6 +95,7 @@ func main() {
 	server.OnError("error", func(so socketio.Conn, err error) {
 		log.Println("error:", err)
 	})
+
 	server.OnEvent("/", "event:adduser", func(so socketio.Conn, msg string) {
 		fmt.Println("event:adduser", msg)
 		var _userInfo interface{}
@@ -115,6 +116,7 @@ func main() {
 					fmt.Println("Redis BroadCastManager- Failure to connect", err)
 				} else {
 					fmt.Println("adding new user to rooms", user_room, tenant_room)
+					so.Emit("event:message", _userInfo)
 				}
 			}
 		}
