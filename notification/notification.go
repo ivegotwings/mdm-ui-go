@@ -2,6 +2,7 @@ package notification
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -136,43 +137,68 @@ func Notify(w http.ResponseWriter, r *http.Request, redisBroadCastAdaptor *redis
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	} else {
-		//fmt.Printf("/api/notify: %v\n", _message.NotificationObject)
+		fmt.Printf("Notify: %v\n", _message.NotificationObject)
 		tenantId := _message.TenantId
 		userId := _message.NotificationObject.Data.JsonData.ClientState.NotificationInfo.UserId
 		if tenantId != "" && userId != "" {
-			clientId := _message.NotificationObject.Data.Attributes.ClientId.Values[0].Value
+			var clientId string
+			if len(_message.NotificationObject.Data.Attributes.ClientId.Values) > 0 {
+				clientId = _message.NotificationObject.Data.Attributes.ClientId.Values[0].Value
+			}
 			if clientId != "" {
 				if ok := utils.Contains(clientIdNotificationExlusionList, clientId); ok {
 					fmt.Println("Ignoring notification for clientId", clientId)
 				}
-				sendNotification(_message.NotificationObject, tenantId, userId)
+				return sendNotification(_message.NotificationObject, tenantId)
+			} else {
+				err = errors.New("Notify- missing clientId")
+				return err
 			}
 		} else {
-			fmt.Println("/api/notify- tenantId or userId not found")
+			err = errors.New("Notify- tenantId or userId not found")
+			return err
 		}
+	}
+}
+
+func sendNotification(notificationObject NotificationObject, tenantId string) error {
+	//redisBroadCastAdaptor.Send(nil, "testroom", "event:notification", _message)
+	var userNotificationInfo UserNotificationInfo
+	err := prepareNotificationObject(&userNotificationInfo, notificationObject)
+	if err != nil {
+		fmt.Println("sendNotification- error in pepareNotificationObject ", err)
+		return err
+	} else {
+		fmt.Printf("sendNotication userNotificationInfo: %v\n", userNotificationInfo)
 	}
 	return nil
 }
 
-func sendNotification(notificationObject NotificationObject, tenantId string, userId string) {
-	//redisBroadCastAdaptor.Send(nil, "testroom", "event:notification", _message)
-	var userNotificationInfo UserNotificationInfo
-	prepareNotificationObject(&userNotificationInfo, notificationObject)
-	fmt.Printf("/api/notify userNotificationInfo: %v\n", userNotificationInfo)
-}
+func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notificationObject NotificationObject) error {
+	var entityId, entityType string
+	var err error
+	if len(notificationObject.Data.Attributes.EntityId.Values) > 0 {
+		entityId = notificationObject.Data.Attributes.EntityId.Values[0].Value
+	}
 
-func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notificationObject NotificationObject) {
-	var entityId string = notificationObject.Data.Attributes.EntityId.Values[0].Value
-	var entityType string = notificationObject.Data.Attributes.EntityType.Values[0].Value
+	if len(notificationObject.Data.Attributes.EntityType.Values) > 0 {
+		entityType = notificationObject.Data.Attributes.EntityType.Values[0].Value
+	}
 
-	userNotificationInfo.ShowNotificationToUser = notificationObject.Data.JsonData.ClientState.NotificationInfo.ShowNotificationToUser
-	userNotificationInfo.Id = notificationObject.Data.JsonData.ClientState.NotificationInfo.Id
-	userNotificationInfo.TimeStamp = notificationObject.Data.JsonData.ClientState.NotificationInfo.TimeStamp
-	userNotificationInfo.Source = notificationObject.Data.JsonData.ClientState.NotificationInfo.Source
-	userNotificationInfo.UserId = notificationObject.Data.JsonData.ClientState.NotificationInfo.UserId
-	userNotificationInfo.ConnectionId = notificationObject.Data.JsonData.ClientState.NotificationInfo.ConnectionId
-	userNotificationInfo.Context = notificationObject.Data.JsonData.ClientState.NotificationInfo.Context
-	userNotificationInfo.RequestStatus = notificationObject.Data.Attributes.RequestStatus.Values[0].Value
+	if entityId == "" || entityType == "" {
+		err = errors.New("prepareNotificationObject- missing entityId or entityType")
+	} else {
+		userNotificationInfo.ShowNotificationToUser = notificationObject.Data.JsonData.ClientState.NotificationInfo.ShowNotificationToUser
+		userNotificationInfo.Id = notificationObject.Data.JsonData.ClientState.NotificationInfo.Id
+		userNotificationInfo.TimeStamp = notificationObject.Data.JsonData.ClientState.NotificationInfo.TimeStamp
+		userNotificationInfo.Source = notificationObject.Data.JsonData.ClientState.NotificationInfo.Source
+		userNotificationInfo.UserId = notificationObject.Data.JsonData.ClientState.NotificationInfo.UserId
+		userNotificationInfo.ConnectionId = notificationObject.Data.JsonData.ClientState.NotificationInfo.ConnectionId
+		userNotificationInfo.Context = notificationObject.Data.JsonData.ClientState.NotificationInfo.Context
+		if len(notificationObject.Data.Attributes.RequestStatus.Values) > 0 {
+			userNotificationInfo.RequestStatus = notificationObject.Data.Attributes.RequestStatus.Values[0].Value
+		}
+	}
 
 	var desc string
 
@@ -182,9 +208,15 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 	}
 	userNotificationInfo.Context.Id = entityId
 	userNotificationInfo.Context.Type = entityType
-	userNotificationInfo.ServiceName = notificationObject.Data.Attributes.ServiceName.Values[0].Value
-	userNotificationInfo.TaskId = notificationObject.Data.Attributes.TaskId.Values[0].Value
-	userNotificationInfo.TaskType = notificationObject.Data.Attributes.TaskType.Values[0].Value
+	if len(notificationObject.Data.Attributes.ServiceName.Values) > 0 {
+		userNotificationInfo.ServiceName = notificationObject.Data.Attributes.ServiceName.Values[0].Value
+	}
+	if len(notificationObject.Data.Attributes.TaskId.Values) > 0 {
+		userNotificationInfo.TaskId = notificationObject.Data.Attributes.TaskId.Values[0].Value
+	}
+	if len(notificationObject.Data.Attributes.TaskType.Values) > 0 {
+		userNotificationInfo.TaskType = notificationObject.Data.Attributes.TaskType.Values[0].Value
+	}
 
 	if userNotificationInfo.Operation == "" {
 		userNotificationInfo.Operation = "connectIntegrationType"
@@ -202,4 +234,5 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 	}
 
 	userNotificationInfo.Description = desc
+	return err
 }
