@@ -121,6 +121,63 @@ type Properties struct {
 	ModifiedDate    string `json:"modifiedDate"`
 }
 
+var actionLookUpTable = map[string]string{
+	"MODEL_IMPORT_success":                               "ModelImportComplete",
+	"MODEL_IMPORT_success_but_errors":                    "ModelImportCompletedWithErrors",
+	"MODEL_IMPORT_error":                                 "ModelImportFail",
+	"MODEL_EXPORT_success_true":                          "EmulatedSyncDownloadComplete",
+	"MODEL_EXPORT_success_false":                         "RSConnectComplete",
+	"MODEL_EXPORT_error":                                 "RSConnectFail",
+	"MODEL_EXPORT_success_but_errors":                    "RSConnectFail",
+	"ENTITY_EXPORT_success_true":                         "EmulatedSyncDownloadComplete",
+	"ENTITY_EXPORT_success_false":                        "RSConnectComplete",
+	"ENTITY_EXPORT_error":                                "RSConnectFail",
+	"ENTITY_EXPORT_success_but_errors":                   "RSConnectFail",
+	"configurationmanageservice_uiconfig_success":        "ConfigurationSaveComplete",
+	"configurationmanageservice_uiconfig_error":          "ConfigurationSaveFail",
+	"entitymanageservice_success_System.Manage.Complete": "SaveComplete",
+	"entitymanageservice_error_System.Manage.Complete":   "SystemSaveFail",
+	"entitymanagemodelservice_sucess_default":            "ModelSaveComplete",
+	"entitymanagemodelservice_error_default":             "ModelSaveFail",
+	"entitymanagemodelservice_success":                   "ModelSaveComplete",
+	"entitymanagemodelservice_error":                     "ModelSaveFail",
+	"entitygovernservice_1_success":                      "WorkflowTransitionComplete",
+	"entitygovernservice_1_error":                        "WorkflowTransitionFail",
+	"entitygovernservice_2_success":                      "WorkflowAssignmentComplete",
+	"entitygovernservice_2_error":                        "WorkflowAssignmentFail",
+	"entitygovernservice_3_success":                      "BusinessConditionSaveComplete",
+	"entitygovernservice_3_error":                        "BusinessConditionSaveFail",
+	"entitygovernservice_success":                        "GovernComplete",
+	"entitygovernservice_error":                          "GovernFail",
+}
+
+var actions = map[string]int{
+	"SystemSaveComplete":             1,
+	"SaveComplete":                   2,
+	"SystemSaveFail":                 3,
+	"SaveFail":                       4,
+	"GovernComplete":                 5,
+	"GovernFail":                     6,
+	"WorkflowTransitionComplete":     7,
+	"WorkflowTransitionFail":         8,
+	"WorkflowAssignmentComplete":     9,
+	"BulkWorkflowAssignmentComplete": 20,
+	"BulkWorkflowTransitionComplete": 21,
+	"WorkflowAssignmentFail":         10,
+	"RSConnectComplete":              11,
+	"RSConnectFail":                  12,
+	"BusinessConditionSaveComplete":  13,
+	"BusinessConditionSaveFail":      14,
+	"ModelImportComplete":            15,
+	"ModelImportFail":                16,
+	"ModelSaveComplete":              17,
+	"ModelSaveFail":                  18,
+	"EmulatedSyncDownloadComplete":   19,
+	"ConfigurationSaveComplete":      22,
+	"ConfigurationSaveFail":          23,
+	"ModelImportCompletedWithErrors": 24,
+}
+
 var clientIdNotificationExlusionList = []string{"healthcheckClient"}
 
 func Notify(w http.ResponseWriter, r *http.Request, redisBroadCastAdaptor *redis.Broadcast) error {
@@ -200,11 +257,11 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 		}
 	}
 
-	var desc string
+	var desc string = "default"
 
 	if userNotificationInfo.Context.Id != entityId {
 		userNotificationInfo.ShowNotificationToUser = false
-		desc = "System Manage Complete"
+		desc = "System.Manage.Complete"
 	}
 	userNotificationInfo.Context.Id = entityId
 	userNotificationInfo.Context.Type = entityType
@@ -226,13 +283,16 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 	case "completed":
 		userNotificationInfo.Status = "success"
 		break
+	case "completed with errors":
+		userNotificationInfo.Status = "success_but_errors"
 	case "errored":
 		userNotificationInfo.Status = "error"
 		break
 	default:
-		userNotificationInfo.Status = userNotificationInfo.RequestStatus
+		userNotificationInfo.Status = strings.ToLower(userNotificationInfo.RequestStatus)
 	}
-
 	userNotificationInfo.Description = desc
+	//action, dataIndex := "", "entityData"
+
 	return err
 }
