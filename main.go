@@ -9,6 +9,7 @@ import (
 	"os"
 
 	socketio "github.com/googollee/go-socket.io"
+	"github.com/ivegotwings/mdm-ui-go/notification"
 	"github.com/ivegotwings/mdm-ui-go/redis"
 )
 
@@ -38,25 +39,11 @@ func baseRouter(w http.ResponseWriter, r *http.Request) {
 func notifyRouterWrapper(redisBroadCastAdaptor *redis.Broadcast) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
-			body, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				http.Error(w, "Error reading request body",
-					http.StatusInternalServerError)
-			}
-			var message []interface{}
-			err = json.Unmarshal(body, &message)
-			if err != nil {
-				fmt.Println("ERR", err)
-				log.Println("notify error in processing body", err)
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			fmt.Println(message)
-			redisBroadCastAdaptor.Send(nil, "testroom", "event:notification", message...)
-			fmt.Fprint(w, "POST done")
+			go notification.Notify(w, r, redisBroadCastAdaptor)
 		} else {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		}
+		fmt.Fprint(w, "POST done")
 		w.Header().Set("Server", "A Go Web Server")
 		w.WriteHeader(200)
 	}
@@ -128,7 +115,7 @@ func main() {
 
 	http.Handle("/socket.io/", server)
 	http.Handle("/", http.HandlerFunc(baseRouter))
-	http.Handle("/notify", http.HandlerFunc(notifyRouterWrapper(redisBroadCastAdaptor)))
+	http.Handle("/api/notify", http.HandlerFunc(notifyRouterWrapper(redisBroadCastAdaptor)))
 
 	fmt.Println("Serving at localhost:5007...")
 	log.Println("Serving at localhost:5007...")
