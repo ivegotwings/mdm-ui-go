@@ -39,7 +39,10 @@ func baseRouter(w http.ResponseWriter, r *http.Request) {
 func notifyRouterWrapper(redisBroadCastAdaptor *redis.Broadcast) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
-			go notification.Notify(w, r, redisBroadCastAdaptor)
+			err := notification.Notify(w, r, redisBroadCastAdaptor)
+			if err != nil {
+				fmt.Println("/api/notify error processing request ", err)
+			}
 		} else {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		}
