@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/ivegotwings/mdm-ui-go/redis"
@@ -15,13 +16,16 @@ import (
 
 type UserNotificationInfo struct {
 	NotificationInfo
-	RequestStatus string
-	TaskId        string
-	TaskType      string
-	RequestId     string
-	ServiceName   string
-	Description   string
-	Status        string
+	RequestStatus        string
+	TaskId               string
+	TaskType             string
+	RequestId            string
+	ServiceName          string
+	Description          string
+	Status               string
+	Action               int
+	DataIndex            string
+	EmulatedSyncDownload bool
 }
 
 type Context struct {
@@ -122,33 +126,38 @@ type Properties struct {
 }
 
 var actionLookUpTable = map[string]string{
-	"MODEL_IMPORT_success":                               "ModelImportComplete",
-	"MODEL_IMPORT_success_but_errors":                    "ModelImportCompletedWithErrors",
-	"MODEL_IMPORT_error":                                 "ModelImportFail",
-	"MODEL_EXPORT_success_true":                          "EmulatedSyncDownloadComplete",
-	"MODEL_EXPORT_success_false":                         "RSConnectComplete",
-	"MODEL_EXPORT_error":                                 "RSConnectFail",
-	"MODEL_EXPORT_success_but_errors":                    "RSConnectFail",
-	"ENTITY_EXPORT_success_true":                         "EmulatedSyncDownloadComplete",
-	"ENTITY_EXPORT_success_false":                        "RSConnectComplete",
-	"ENTITY_EXPORT_error":                                "RSConnectFail",
-	"ENTITY_EXPORT_success_but_errors":                   "RSConnectFail",
-	"configurationmanageservice_uiconfig_success":        "ConfigurationSaveComplete",
-	"configurationmanageservice_uiconfig_error":          "ConfigurationSaveFail",
-	"entitymanageservice_success_System.Manage.Complete": "SaveComplete",
-	"entitymanageservice_error_System.Manage.Complete":   "SystemSaveFail",
-	"entitymanagemodelservice_sucess_default":            "ModelSaveComplete",
-	"entitymanagemodelservice_error_default":             "ModelSaveFail",
-	"entitymanagemodelservice_success":                   "ModelSaveComplete",
-	"entitymanagemodelservice_error":                     "ModelSaveFail",
-	"entitygovernservice_1_success":                      "WorkflowTransitionComplete",
-	"entitygovernservice_1_error":                        "WorkflowTransitionFail",
-	"entitygovernservice_2_success":                      "WorkflowAssignmentComplete",
-	"entitygovernservice_2_error":                        "WorkflowAssignmentFail",
-	"entitygovernservice_3_success":                      "BusinessConditionSaveComplete",
-	"entitygovernservice_3_error":                        "BusinessConditionSaveFail",
-	"entitygovernservice_success":                        "GovernComplete",
-	"entitygovernservice_error":                          "GovernFail",
+	"MODEL_IMPORT_success":                                                      "ModelImportComplete",
+	"MODEL_IMPORT_success_but_errors":                                           "ModelImportCompletedWithErrors",
+	"MODEL_IMPORT_error":                                                        "ModelImportFail",
+	"MODEL_EXPORT_success_true":                                                 "EmulatedSyncDownloadComplete",
+	"MODEL_EXPORT_success_false":                                                "RSConnectComplete",
+	"MODEL_EXPORT_error_":                                                       "RSConnectFail",
+	"MODEL_EXPORT_success_but_errors_":                                          "RSConnectFail",
+	"ENTITY_EXPORT_success_true":                                                "EmulatedSyncDownloadComplete",
+	"ENTITY_EXPORT_success_false":                                               "RSConnectComplete",
+	"ENTITY_EXPORT_error_false":                                                 "RSConnectFail",
+	"ENTITY_EXPORT_success_but_errors_false":                                    "RSConnectFail",
+	"configurationmanageservice_uiconfig_success":                               "ConfigurationSaveComplete",
+	"configurationmanageservice_uiconfig_error":                                 "ConfigurationSaveFail",
+	"entitymanageservice_success_System.Manage.Complete":                        "SaveComplete",
+	"entitymanageservice_error_System.Manage.Complete":                          "SystemSaveFail",
+	"entitymanagemodelservice_sucess_default":                                   "ModelSaveComplete",
+	"entitymanagemodelservice_error_default":                                    "ModelSaveFail",
+	"entitymanagemodelservice_success":                                          "ModelSaveComplete",
+	"entitymanagemodelservice_error":                                            "ModelSaveFail",
+	"entitygovernservice_WorkflowTransition_success":                            "WorkflowTransitionComplete",
+	"entitygovernservice_WorkflowTransition_error":                              "WorkflowTransitionFail",
+	"entitygovernservice_WorkflowAssignment_success":                            "WorkflowAssignmentComplete",
+	"entitygovernservice_WorkflowAssignment_error":                              "WorkflowAssignmentFail",
+	"entitygovernservice_BusinessCondition_success":                             "BusinessConditionSaveComplete",
+	"entitygovernservice_BusinessCondition_error":                               "BusinessConditionSaveFail",
+	"entitygovernservice_success":                                               "GovernComplete",
+	"entitygovernservice_error":                                                 "GovernFail",
+	"notificationmanageservice_changeAssignment-multi-query_success":            "BulkWorkflowAssignmentComplete",
+	"notificationmanageservice_changeAssignment-multi-query_success_but_errors": "BulkWorkflowAssignmentComplete",
+	"notificationmanageservice_changeAssignment-multi-query_error":              "WorkflowAssignmentFail",
+	"notificationmanageservice_transitionWorkflow-multi-query_success":          "BulkWorkflowTransitionComplete",
+	"notificationmanageservice_transitionWorkflow-multi-query_error":            "WorkflowTransitionFail",
 }
 
 var actions = map[string]int{
@@ -176,6 +185,14 @@ var actions = map[string]int{
 	"ConfigurationSaveComplete":      22,
 	"ConfigurationSaveFail":          23,
 	"ModelImportCompletedWithErrors": 24,
+}
+
+var dataIndexMapping = map[string]string{
+	"entitymanageService":        "entityData",
+	"entitygovernservice":        "entityData",
+	"entitymanagemodelservice":   "entityModel",
+	"configurationmanageservice": "config",
+	"genericobjectmanageservice": "genericObjectData",
 }
 
 var clientIdNotificationExlusionList = []string{"healthcheckClient"}
@@ -252,6 +269,7 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 		userNotificationInfo.UserId = notificationObject.Data.JsonData.ClientState.NotificationInfo.UserId
 		userNotificationInfo.ConnectionId = notificationObject.Data.JsonData.ClientState.NotificationInfo.ConnectionId
 		userNotificationInfo.Context = notificationObject.Data.JsonData.ClientState.NotificationInfo.Context
+		userNotificationInfo.EmulatedSyncDownload = notificationObject.Data.JsonData.ClientState.EmulatedSyncDownload
 		if len(notificationObject.Data.Attributes.RequestStatus.Values) > 0 {
 			userNotificationInfo.RequestStatus = notificationObject.Data.Attributes.RequestStatus.Values[0].Value
 		}
@@ -266,7 +284,7 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 	userNotificationInfo.Context.Id = entityId
 	userNotificationInfo.Context.Type = entityType
 	if len(notificationObject.Data.Attributes.ServiceName.Values) > 0 {
-		userNotificationInfo.ServiceName = notificationObject.Data.Attributes.ServiceName.Values[0].Value
+		userNotificationInfo.ServiceName = strings.ToLower(notificationObject.Data.Attributes.ServiceName.Values[0].Value)
 	}
 	if len(notificationObject.Data.Attributes.TaskId.Values) > 0 {
 		userNotificationInfo.TaskId = notificationObject.Data.Attributes.TaskId.Values[0].Value
@@ -292,7 +310,37 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 		userNotificationInfo.Status = strings.ToLower(userNotificationInfo.RequestStatus)
 	}
 	userNotificationInfo.Description = desc
-	//action, dataIndex := "", "entityData"
+	action, dataIndex := 0, "entityData"
+	if userNotificationInfo.Operation == "MODEL_IMPORT" {
+		dataIndex = "entityModel"
+		action = actions[actionLookUpTable[userNotificationInfo.Operation+"_"+userNotificationInfo.Status]]
+	} else if userNotificationInfo.Operation == "MODEL_EXPORT" || userNotificationInfo.Operation == "ENTITY_EXPORT" {
+		action = actions[actionLookUpTable[userNotificationInfo.Operation+"_"+userNotificationInfo.Status+"_"+strconv.FormatBool(userNotificationInfo.EmulatedSyncDownload)]]
+	} else if userNotificationInfo.ServiceName == "configurationmanageservice" && userNotificationInfo.Context.Type == "uiconfig" {
+		if userNotificationInfo.Operation == "" {
+			action = actions[actionLookUpTable[userNotificationInfo.ServiceName+"_"+userNotificationInfo.Context.Type+"_"+userNotificationInfo.Status]]
+		}
+	} else if userNotificationInfo.ServiceName == "entitymanageservice" {
+		if userNotificationInfo.Operation == "" {
+			action = actions[actionLookUpTable[userNotificationInfo.ServiceName+"_"+userNotificationInfo.Status+"_"+userNotificationInfo.Description]]
+		}
+	} else if userNotificationInfo.ServiceName == "entitymanagemodelservice" {
+		action = actions[actionLookUpTable[userNotificationInfo.ServiceName+"_"+userNotificationInfo.Status]]
+	} else if userNotificationInfo.ServiceName == "entitygovernservice" {
+		if userNotificationInfo.Operation == "" {
+			action = actions[actionLookUpTable[userNotificationInfo.ServiceName+"_"+userNotificationInfo.Status]]
+		} else {
+			action = actions[actionLookUpTable[userNotificationInfo.ServiceName+"_"+userNotificationInfo.Operation+"_"+userNotificationInfo.Status]]
+		}
+	} else if userNotificationInfo.ServiceName == "notificationmanageservice" {
+		action = actions[actionLookUpTable[userNotificationInfo.ServiceName+"_"+userNotificationInfo.TaskType+"_"+userNotificationInfo.Status]]
+	} else if val, ok := dataIndexMapping[userNotificationInfo.ServiceName]; ok {
+		dataIndex = val
+	}
 
+	fmt.Println("setActionAndDataIndex- action & dataIndex", action, dataIndex)
+
+	userNotificationInfo.Action = action
+	userNotificationInfo.DataIndex = dataIndex
 	return err
 }
