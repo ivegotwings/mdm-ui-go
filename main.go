@@ -10,6 +10,7 @@ import (
 	"time"
 
 	socketio "github.com/googollee/go-socket.io"
+	"github.com/ivegotwings/mdm-ui-go/moduleversion"
 	"github.com/ivegotwings/mdm-ui-go/notification"
 	"github.com/ivegotwings/mdm-ui-go/redis"
 	"github.com/ivegotwings/mdm-ui-go/state"
@@ -67,6 +68,8 @@ func main() {
 	b, err := json.Marshal(config)
 	fmt.Println("Redis Config-")
 	fmt.Println(string(b))
+	//pre load the map once
+	moduleversion.LoadDomainMap()
 
 	opts := make(map[string]string)
 	opts["host"] = config.Redis.Host

@@ -12,6 +12,7 @@ var conn redis.Conn
 func Connect(opts map[string]string) error {
 	fmt.Println("state- redis config", opts)
 	var ok bool
+	var err error
 	var host, port string
 	host, ok = opts["host"]
 	if !ok {
@@ -21,11 +22,14 @@ func Connect(opts map[string]string) error {
 	if !ok {
 		port = "6379"
 	}
-	conn, err := redis.Dial("tcp", host+":"+port)
+	conn, err = redis.Dial("tcp", host+":"+port)
 
 	if err != nil {
 		return errors.New("state- unable to connect to redis")
 	}
-	fmt.Println(conn)
 	return nil
+}
+
+func Send(commandName string, args ...interface{}) {
+	conn.Send(commandName, args...)
 }

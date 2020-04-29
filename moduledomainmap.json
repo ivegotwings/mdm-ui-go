@@ -1,0 +1,21 @@
+{
+    "entityData": [
+        "referenceData",
+        "sysReferenceData"
+    ],
+    "entityModel": [
+        "default"
+    ],
+    "config": [
+        "default"
+    ],
+    "eventData": [
+        "default"
+    ],
+    "entityGovernData": [
+        "default"
+    ],
+    "genericObjectData": [
+        "default"
+    ]
+}

@@ -249,6 +249,9 @@ func sendNotification(notificationObject NotificationObject, tenantId string) er
 		return err
 	} else {
 		fmt.Printf("sendNotication userNotificationInfo: %v\n", userNotificationInfo)
+		if userNotificationInfo.UserId == "" && userNotificationInfo.RequestStatus == "error" {
+			return errors.New("sendNotification- Invalid userId or RequestStatus")
+		}
 	}
 	return nil
 }
