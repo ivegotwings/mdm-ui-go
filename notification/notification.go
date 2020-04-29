@@ -1,3 +1,4 @@
+//redisBroadCastAdaptor.Send(nil, "testroom", "event:notification", _message)
 package notification
 
 import (
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ivegotwings/mdm-ui-go/redis"
 	"github.com/ivegotwings/mdm-ui-go/utils"
@@ -240,7 +242,6 @@ func Notify(w http.ResponseWriter, r *http.Request, redisBroadCastAdaptor *redis
 }
 
 func sendNotification(notificationObject NotificationObject, tenantId string) error {
-	//redisBroadCastAdaptor.Send(nil, "testroom", "event:notification", _message)
 	var userNotificationInfo UserNotificationInfo
 	err := prepareNotificationObject(&userNotificationInfo, notificationObject)
 	if err != nil {
@@ -315,11 +316,9 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 		userNotificationInfo.ShowNotificationToUser = false
 		desc = "System.Manage.Complete"
 	}
-	fmt.Println("desc", desc)
 	userNotificationInfo.Description = desc
 
-	action, dataIndex := 0, "entityData"
-	fmt.Println("Operation ", userNotificationInfo.Operation)
+	action, dataIndex := 0, "default"
 	if userNotificationInfo.Operation == "MODEL_IMPORT" {
 		dataIndex = "entityModel"
 		action = actions[actionLookUpTable[userNotificationInfo.Operation+"_"+userNotificationInfo.Status]]
@@ -353,4 +352,16 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 	userNotificationInfo.Action = action
 	userNotificationInfo.DataIndex = dataIndex
 	return err
+}
+
+func NotificationScheduler(ticker *time.Ticker, quit chan struct{}) {
+	for {
+		select {
+		case <-ticker.C:
+			fmt.Println("go")
+		case <-quit:
+			ticker.Stop()
+			return
+		}
+	}
 }

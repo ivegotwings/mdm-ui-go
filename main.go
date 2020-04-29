@@ -7,10 +7,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/ivegotwings/mdm-ui-go/notification"
 	"github.com/ivegotwings/mdm-ui-go/redis"
+	"github.com/ivegotwings/mdm-ui-go/state"
 )
 
 type Config struct {
@@ -18,6 +20,7 @@ type Config struct {
 		Host string
 		Port string
 	}
+	NotificationInterval uint
 }
 
 func LoadConfiguration(file string) Config {
@@ -70,6 +73,14 @@ func main() {
 	opts["port"] = config.Redis.Port
 	//notifiy channel
 	redisBroadCastAdaptor := redis.Redis(opts)
+	//state channel
+	err = state.Connect(opts)
+	if err != nil {
+		panic(err)
+	}
+	var ticker *time.Ticker = time.NewTicker(time.Duration(config.NotificationInterval) * time.Millisecond)
+	var quit = make(chan struct{})
+	go notification.NotificationScheduler(ticker, quit)
 
 	server.OnConnect("", func(so socketio.Conn) error {
 		so.SetContext("")
