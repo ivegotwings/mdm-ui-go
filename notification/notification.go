@@ -79,20 +79,21 @@ type AttributeIntVal struct {
 }
 
 type Attributes struct {
-	EntityAction     AttributeStringVal `json:"entityAction"`
-	EntityId         AttributeStringVal `json:"entityId"`
-	EntityType       AttributeStringVal `json:"entityType"`
-	RequestId        AttributeStringVal `json:"requestId"`
-	RequestStatus    AttributeStringVal `json:"requestStatus"`
-	RequestTimestamp AttributeIntVal    `json:"requestTimestamp"`
-	RelatedRequestId AttributeStringVal `json:"relatedRequestId"`
-	RequestGroupId   AttributeStringVal `json:"requestGroupId"`
-	ClientId         AttributeStringVal `json:"clientId"`
-	UserId           AttributeStringVal `json:"userId"`
-	ObjectStore      AttributeStringVal `json:"ObjectStore"`
-	ServiceName      AttributeStringVal `json:"serviceName"`
-	TaskId           AttributeStringVal `json:"taskId"`
-	TaskType         AttributeStringVal `json:"taskType"`
+	EntityAction           AttributeStringVal `json:"entityAction"`
+	EntityId               AttributeStringVal `json:"entityId"`
+	EntityType             AttributeStringVal `json:"entityType"`
+	RequestId              AttributeStringVal `json:"requestId"`
+	RequestStatus          AttributeStringVal `json:"requestStatus"`
+	RequestTimestamp       AttributeIntVal    `json:"requestTimestamp"`
+	RelatedRequestId       AttributeStringVal `json:"relatedRequestId"`
+	RequestGroupId         AttributeStringVal `json:"requestGroupId"`
+	ClientId               AttributeStringVal `json:"clientId"`
+	UserId                 AttributeStringVal `json:"userId"`
+	ObjectStore            AttributeStringVal `json:"ObjectStore"`
+	ServiceName            AttributeStringVal `json:"serviceName"`
+	TaskId                 AttributeStringVal `json:"taskId"`
+	TaskType               AttributeStringVal `json:"taskType"`
+	ConnectIntegrationType AttributeStringVal `json:"connectIntegrationType"`
 }
 
 type Data struct {
@@ -294,7 +295,9 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 	}
 
 	if userNotificationInfo.Operation == "" {
-		userNotificationInfo.Operation = "connectIntegrationType"
+		if len(notificationObject.Data.Attributes.ConnectIntegrationType.Values) > 0 {
+			userNotificationInfo.Operation = notificationObject.Data.Attributes.ConnectIntegrationType.Values[0].Value
+		}
 	}
 
 	switch status := strings.ToLower(userNotificationInfo.RequestStatus); status {
