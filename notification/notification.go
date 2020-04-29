@@ -127,38 +127,41 @@ type Properties struct {
 }
 
 var actionLookUpTable = map[string]string{
-	"MODEL_IMPORT_success":                                                      "ModelImportComplete",
-	"MODEL_IMPORT_success_but_errors":                                           "ModelImportCompletedWithErrors",
-	"MODEL_IMPORT_error":                                                        "ModelImportFail",
-	"MODEL_EXPORT_success_true":                                                 "EmulatedSyncDownloadComplete",
-	"MODEL_EXPORT_success_false":                                                "RSConnectComplete",
-	"MODEL_EXPORT_error_":                                                       "RSConnectFail",
-	"MODEL_EXPORT_success_but_errors_":                                          "RSConnectFail",
-	"ENTITY_EXPORT_success_true":                                                "EmulatedSyncDownloadComplete",
-	"ENTITY_EXPORT_success_false":                                               "RSConnectComplete",
-	"ENTITY_EXPORT_error_false":                                                 "RSConnectFail",
-	"ENTITY_EXPORT_success_but_errors_false":                                    "RSConnectFail",
-	"configurationmanageservice_uiconfig_success":                               "ConfigurationSaveComplete",
-	"configurationmanageservice_uiconfig_error":                                 "ConfigurationSaveFail",
-	"entitymanageservice_success_System.Manage.Complete":                        "SaveComplete",
-	"entitymanageservice_error_System.Manage.Complete":                          "SystemSaveFail",
-	"entitymanagemodelservice_sucess_default":                                   "ModelSaveComplete",
-	"entitymanagemodelservice_error_default":                                    "ModelSaveFail",
-	"entitymanagemodelservice_success":                                          "ModelSaveComplete",
-	"entitymanagemodelservice_error":                                            "ModelSaveFail",
-	"entitygovernservice_WorkflowTransition_success":                            "WorkflowTransitionComplete",
-	"entitygovernservice_WorkflowTransition_error":                              "WorkflowTransitionFail",
-	"entitygovernservice_WorkflowAssignment_success":                            "WorkflowAssignmentComplete",
-	"entitygovernservice_WorkflowAssignment_error":                              "WorkflowAssignmentFail",
-	"entitygovernservice_BusinessCondition_success":                             "BusinessConditionSaveComplete",
-	"entitygovernservice_BusinessCondition_error":                               "BusinessConditionSaveFail",
-	"entitygovernservice_success":                                               "GovernComplete",
-	"entitygovernservice_error":                                                 "GovernFail",
-	"notificationmanageservice_changeAssignment-multi-query_success":            "BulkWorkflowAssignmentComplete",
-	"notificationmanageservice_changeAssignment-multi-query_success_but_errors": "BulkWorkflowAssignmentComplete",
-	"notificationmanageservice_changeAssignment-multi-query_error":              "WorkflowAssignmentFail",
-	"notificationmanageservice_transitionWorkflow-multi-query_success":          "BulkWorkflowTransitionComplete",
-	"notificationmanageservice_transitionWorkflow-multi-query_error":            "WorkflowTransitionFail",
+	"MODEL_IMPORT_success":                                                        "ModelImportComplete",
+	"MODEL_IMPORT_success_but_errors":                                             "ModelImportCompletedWithErrors",
+	"MODEL_IMPORT_error":                                                          "ModelImportFail",
+	"MODEL_EXPORT_success_true":                                                   "EmulatedSyncDownloadComplete",
+	"MODEL_EXPORT_success_false":                                                  "RSConnectComplete",
+	"MODEL_EXPORT_error_":                                                         "RSConnectFail",
+	"MODEL_EXPORT_success_but_errors_":                                            "RSConnectFail",
+	"ENTITY_EXPORT_success_true":                                                  "EmulatedSyncDownloadComplete",
+	"ENTITY_EXPORT_success_false":                                                 "RSConnectComplete",
+	"ENTITY_EXPORT_error_false":                                                   "RSConnectFail",
+	"ENTITY_EXPORT_success_but_errors_false":                                      "RSConnectFail",
+	"configurationmanageservice_uiconfig_success":                                 "ConfigurationSaveComplete",
+	"configurationmanageservice_uiconfig_error":                                   "ConfigurationSaveFail",
+	"entitymanageservice_success_System.Manage.Complete":                          "SystemSaveComplete",
+	"entitymanageservice_success_default":                                         "SaveComplete",
+	"entitymanageservice_error_System.Manage.Complete":                            "SystemSaveFail",
+	"entitymanageservice_error_default":                                           "SaveFail",
+	"entitymanagemodelservice_sucess_default":                                     "ModelSaveComplete",
+	"entitymanagemodelservice_error_default":                                      "ModelSaveFail",
+	"entitymanagemodelservice_success":                                            "ModelSaveComplete",
+	"entitymanagemodelservice_error":                                              "ModelSaveFail",
+	"entitygovernservice_WorkflowTransition_success":                              "WorkflowTransitionComplete",
+	"entitygovernservice_WorkflowTransition_error":                                "WorkflowTransitionFail",
+	"entitygovernservice_WorkflowAssignment_success":                              "WorkflowAssignmentComplete",
+	"entitygovernservice_WorkflowAssignment_error":                                "WorkflowAssignmentFail",
+	"entitygovernservice_BusinessCondition_success":                               "BusinessConditionSaveComplete",
+	"entitygovernservice_BusinessCondition_error":                                 "BusinessConditionSaveFail",
+	"entitygovernservice_success":                                                 "GovernComplete",
+	"entitygovernservice_error":                                                   "GovernFail",
+	"notificationmanageservice_changeAssignment-multi-query_success":              "BulkWorkflowAssignmentComplete",
+	"notificationmanageservice_changeAssignment-multi-query_success_but_errors":   "BulkWorkflowAssignmentComplete",
+	"notificationmanageservice_changeAssignment-multi-query_error":                "WorkflowAssignmentFail",
+	"notificationmanageservice_transitionWorkflow-multi-query_success":            "BulkWorkflowTransitionComplete",
+	"notificationmanageservice_transitionWorkflow-multi-query_success_but_errors": "BulkWorkflowTransitionComplete",
+	"notificationmanageservice_transitionWorkflow-multi-query_error":              "WorkflowTransitionFail",
 }
 
 var actions = map[string]int{
@@ -255,7 +258,6 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 	if len(notificationObject.Data.Attributes.EntityId.Values) > 0 {
 		entityId = notificationObject.Data.Attributes.EntityId.Values[0].Value
 	}
-
 	if len(notificationObject.Data.Attributes.EntityType.Values) > 0 {
 		entityType = notificationObject.Data.Attributes.EntityType.Values[0].Value
 	}
@@ -263,6 +265,7 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 	if entityId == "" || entityType == "" {
 		err = errors.New("prepareNotificationObject- missing entityId or entityType")
 	} else {
+		//fill userNotificationInfo
 		userNotificationInfo.ShowNotificationToUser = notificationObject.Data.JsonData.ClientState.NotificationInfo.ShowNotificationToUser
 		userNotificationInfo.Id = notificationObject.Data.JsonData.ClientState.NotificationInfo.Id
 		userNotificationInfo.TimeStamp = notificationObject.Data.JsonData.ClientState.NotificationInfo.TimeStamp
@@ -271,19 +274,20 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 		userNotificationInfo.ConnectionId = notificationObject.Data.JsonData.ClientState.NotificationInfo.ConnectionId
 		userNotificationInfo.Context = notificationObject.Data.JsonData.ClientState.NotificationInfo.Context
 		userNotificationInfo.EmulatedSyncDownload = notificationObject.Data.JsonData.ClientState.EmulatedSyncDownload
+		userNotificationInfo.Operation = notificationObject.Data.JsonData.ClientState.NotificationInfo.Operation
+		if userNotificationInfo.Context.Id == "" {
+			userNotificationInfo.Context.Id = entityId
+			userNotificationInfo.Context.Type = entityType
+		}
+		if userNotificationInfo.Operation == "" {
+			if len(notificationObject.Data.Attributes.ConnectIntegrationType.Values) > 0 {
+				userNotificationInfo.Operation = notificationObject.Data.Attributes.ConnectIntegrationType.Values[0].Value
+			}
+		}
 		if len(notificationObject.Data.Attributes.RequestStatus.Values) > 0 {
 			userNotificationInfo.RequestStatus = notificationObject.Data.Attributes.RequestStatus.Values[0].Value
 		}
 	}
-
-	var desc string = "default"
-
-	if userNotificationInfo.Context.Id != entityId {
-		userNotificationInfo.ShowNotificationToUser = false
-		desc = "System.Manage.Complete"
-	}
-	userNotificationInfo.Context.Id = entityId
-	userNotificationInfo.Context.Type = entityType
 	if len(notificationObject.Data.Attributes.ServiceName.Values) > 0 {
 		userNotificationInfo.ServiceName = strings.ToLower(notificationObject.Data.Attributes.ServiceName.Values[0].Value)
 	}
@@ -293,13 +297,6 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 	if len(notificationObject.Data.Attributes.TaskType.Values) > 0 {
 		userNotificationInfo.TaskType = notificationObject.Data.Attributes.TaskType.Values[0].Value
 	}
-
-	if userNotificationInfo.Operation == "" {
-		if len(notificationObject.Data.Attributes.ConnectIntegrationType.Values) > 0 {
-			userNotificationInfo.Operation = notificationObject.Data.Attributes.ConnectIntegrationType.Values[0].Value
-		}
-	}
-
 	switch status := strings.ToLower(userNotificationInfo.RequestStatus); status {
 	case "completed":
 		userNotificationInfo.Status = "success"
@@ -312,8 +309,17 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 	default:
 		userNotificationInfo.Status = strings.ToLower(userNotificationInfo.RequestStatus)
 	}
+
+	var desc string = "default"
+	if userNotificationInfo.Context.Id != entityId {
+		userNotificationInfo.ShowNotificationToUser = false
+		desc = "System.Manage.Complete"
+	}
+	fmt.Println("desc", desc)
 	userNotificationInfo.Description = desc
+
 	action, dataIndex := 0, "entityData"
+	fmt.Println("Operation ", userNotificationInfo.Operation)
 	if userNotificationInfo.Operation == "MODEL_IMPORT" {
 		dataIndex = "entityModel"
 		action = actions[actionLookUpTable[userNotificationInfo.Operation+"_"+userNotificationInfo.Status]]
@@ -337,7 +343,8 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 		}
 	} else if userNotificationInfo.ServiceName == "notificationmanageservice" {
 		action = actions[actionLookUpTable[userNotificationInfo.ServiceName+"_"+userNotificationInfo.TaskType+"_"+userNotificationInfo.Status]]
-	} else if val, ok := dataIndexMapping[userNotificationInfo.ServiceName]; ok {
+	}
+	if val, ok := dataIndexMapping[userNotificationInfo.ServiceName]; ok {
 		dataIndex = val
 	}
 
