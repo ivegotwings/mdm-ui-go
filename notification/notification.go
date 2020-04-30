@@ -12,8 +12,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/garyburd/redigo/redis"
+	"github.com/ivegotwings/mdm-ui-go/connection"
 	"github.com/ivegotwings/mdm-ui-go/moduleversion"
-	"github.com/ivegotwings/mdm-ui-go/redis"
+	"github.com/ivegotwings/mdm-ui-go/state"
 	"github.com/ivegotwings/mdm-ui-go/utils"
 )
 
@@ -216,7 +218,7 @@ var dataIndexMapping = map[string]string{
 var clientIdNotificationExlusionList = []string{"healthcheckClient"}
 var NotificationPayloadQueue NotificaitonPayloadQueue
 
-func Notify(w http.ResponseWriter, r *http.Request, redisBroadCastAdaptor *redis.Broadcast) error {
+func Notify(w http.ResponseWriter, r *http.Request, redisBroadCastAdaptor *connection.Broadcast) error {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Error reading request body",
@@ -395,6 +397,27 @@ func NotificationScheduler(ticker *time.Ticker, quit chan struct{}) {
 		select {
 		case <-ticker.C:
 			fmt.Println("NtoificationScheduler PayLoad Length ", len(NotificationPayloadQueue.Payload))
+			if len(NotificationPayloadQueue.Payload) > 0 {
+				for _, payload := range NotificationPayloadQueue.Payload {
+					conn := *state.Conn()
+					version, err := redis.Int(conn.Do("GET", payload.VersionKey))
+					//conn.Flush()
+					//version, err := conn.Receive()
+					if err == nil {
+						var newversion uint8
+						fmt.Println("MotificationScheduler versionKey verion", versionKey, version)
+						if version != 0 {
+							_version := uint8(version)
+							newversion = _version + 1
+						} else {
+							newversion = moduleversion.DEFAULT_VERSION
+						}
+						conn.Send("SET", payload.VersionKey, newversion)
+						conn.Flush()
+
+					}
+				}
+			}
 		case <-quit:
 			ticker.Stop()
 			return

@@ -30,6 +30,6 @@ func Connect(opts map[string]string) error {
 	return nil
 }
 
-func Send(commandName string, args ...interface{}) {
-	conn.Send(commandName, args...)
+func Conn() *redis.Conn {
+	return &conn
 }

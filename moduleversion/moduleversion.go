@@ -9,7 +9,7 @@ import (
 )
 
 var MODULE_VERSION_KEY string = "-runtime-module-version"
-var DEFAULT_VERSION string = "101"
+var DEFAULT_VERSION uint8 = 101
 var moduleDomainMap ModuleDomainMap
 
 type ModuleDomainMap struct {
@@ -33,9 +33,6 @@ func GetVersionKey(module string, domain string, tenantId string) (string, error
 		}
 	}
 	versionKey := module + "-" + resolvedDomain + "-" + tenantId + MODULE_VERSION_KEY
-	if versionKey == "" {
-		versionKey = DEFAULT_VERSION
-	}
 	return versionKey, nil
 }
 

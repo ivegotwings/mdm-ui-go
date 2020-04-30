@@ -10,9 +10,9 @@ import (
 	"time"
 
 	socketio "github.com/googollee/go-socket.io"
+	"github.com/ivegotwings/mdm-ui-go/connection"
 	"github.com/ivegotwings/mdm-ui-go/moduleversion"
 	"github.com/ivegotwings/mdm-ui-go/notification"
-	"github.com/ivegotwings/mdm-ui-go/redis"
 	"github.com/ivegotwings/mdm-ui-go/state"
 )
 
@@ -40,7 +40,7 @@ func baseRouter(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Server", "A Go Web Server")
 	w.WriteHeader(200)
 }
-func notifyRouterWrapper(redisBroadCastAdaptor *redis.Broadcast) func(w http.ResponseWriter, r *http.Request) {
+func notifyRouterWrapper(redisBroadCastAdaptor *connection.Broadcast) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			err := notification.Notify(w, r, redisBroadCastAdaptor)
@@ -75,7 +75,7 @@ func main() {
 	opts["host"] = config.Redis.Host
 	opts["port"] = config.Redis.Port
 	//notifiy channel
-	redisBroadCastAdaptor := redis.Redis(opts)
+	redisBroadCastAdaptor := connection.Redis(opts)
 	//state channel
 	err = state.Connect(opts)
 	if err != nil {
