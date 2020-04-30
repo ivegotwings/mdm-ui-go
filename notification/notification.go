@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ivegotwings/mdm-ui-go/moduleversion"
 	"github.com/ivegotwings/mdm-ui-go/redis"
 	"github.com/ivegotwings/mdm-ui-go/utils"
 )
@@ -28,6 +29,7 @@ type UserNotificationInfo struct {
 	Action               int
 	DataIndex            string
 	EmulatedSyncDownload bool
+	TenantId             string
 }
 
 type Context struct {
@@ -119,6 +121,16 @@ type Notification struct {
 	Properties         Properties         `json:"properties"`
 }
 
+type NotificationPayload struct {
+	UserNotificationInfo UserNotificationInfo
+	UserInfo             map[string]string
+	VersionKey           string
+}
+
+type NotificaitonPayloadQueue struct {
+	Payload []NotificationPayload
+}
+
 type Properties struct {
 	CreatedService  string `json:"createdService"`
 	CreatedBy       string `json:"createdBy"`
@@ -202,6 +214,7 @@ var dataIndexMapping = map[string]string{
 }
 
 var clientIdNotificationExlusionList = []string{"healthcheckClient"}
+var NotificationPayloadQueue NotificaitonPayloadQueue
 
 func Notify(w http.ResponseWriter, r *http.Request, redisBroadCastAdaptor *redis.Broadcast) error {
 	body, err := ioutil.ReadAll(r.Body)
@@ -251,6 +264,26 @@ func sendNotification(notificationObject NotificationObject, tenantId string) er
 		fmt.Printf("sendNotication userNotificationInfo: %v\n", userNotificationInfo)
 		if userNotificationInfo.UserId == "" && userNotificationInfo.RequestStatus == "error" {
 			return errors.New("sendNotification- Invalid userId or RequestStatus")
+		}
+		userNotificationInfo.TenantId = tenantId
+		userInfo := map[string]string{
+			"userId":   userNotificationInfo.UserId,
+			"tenantId": userNotificationInfo.TenantId,
+		}
+		if userNotificationInfo.Action == actions["ModelImportComplete"] || userNotificationInfo.Action == actions["ModelImportCompletedWithErrors"] {
+			versionKey, error := moduleversion.GetVersionKey(userNotificationInfo.DataIndex, "", tenantId)
+			if error == nil {
+				NotificationPayload := NotificationPayload{
+					VersionKey:           versionKey,
+					UserNotificationInfo: userNotificationInfo,
+					UserInfo:             userInfo,
+				}
+				fmt.Println("adding payload")
+				NotificationPayloadQueue.Payload = append(NotificationPayloadQueue.Payload, NotificationPayload)
+			} else {
+				return errors.New("sendNotification- cannot get VersionKey")
+			}
+			//NotificaitonPayloadQueue.Payload
 		}
 	}
 	return nil
@@ -361,7 +394,7 @@ func NotificationScheduler(ticker *time.Ticker, quit chan struct{}) {
 	for {
 		select {
 		case <-ticker.C:
-			fmt.Println("go")
+			fmt.Println("NtoificationScheduler PayLoad Length ", len(NotificationPayloadQueue.Payload))
 		case <-quit:
 			ticker.Stop()
 			return

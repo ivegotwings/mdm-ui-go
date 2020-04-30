@@ -2,12 +2,15 @@ package moduleversion
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 )
 
 var MODULE_VERSION_KEY string = "-runtime-module-version"
+var DEFAULT_VERSION string = "101"
+var moduleDomainMap ModuleDomainMap
 
 type ModuleDomainMap struct {
 	EntityData        []string `json:"entityData"`
@@ -18,14 +21,58 @@ type ModuleDomainMap struct {
 	GenericObjectData []string `json:"genericObjectData"`
 }
 
-func UpdateModuleVersion(module string, domain string, tenantId string) {
+func GetVersionKey(module string, domain string, tenantId string) (string, error) {
+	var resolvedDomain string
+	var err error
 	if domain == "" {
-		domain = "default"
+		resolvedDomain = "default"
+	} else {
+		resolvedDomain, err = GetResolvedDomain(module, domain, tenantId)
+		if err != nil {
+			return "", errors.New("UpdateModuleVersion- cannot resolve domain")
+		}
 	}
+	versionKey := module + "-" + resolvedDomain + "-" + tenantId + MODULE_VERSION_KEY
+	if versionKey == "" {
+		versionKey = DEFAULT_VERSION
+	}
+	return versionKey, nil
+}
+
+func GetResolvedDomain(module string, domain string, tenantId string) (string, error) {
+	if module == "" {
+		return "", errors.New("GetVersion- no module provided")
+	}
+	var domainIter []string
+	var resolvedDomain string
+	switch module {
+	case "entityData":
+		domainIter = moduleDomainMap.EntityData
+		break
+	case "entityModel":
+		domainIter = moduleDomainMap.EntityModel
+	case "entityGovernData":
+		domainIter = moduleDomainMap.EntityGovernData
+	case "config":
+		domainIter = moduleDomainMap.Config
+	case "eventData":
+		domainIter = moduleDomainMap.EventData
+	case "genericObject":
+		domainIter = moduleDomainMap.GenericObjectData
+	}
+
+	for _, _domain := range domainIter {
+		if _domain == domain {
+			resolvedDomain = domain
+			break
+		} else {
+			resolvedDomain = "default"
+		}
+	}
+	return resolvedDomain, nil
 }
 
 func LoadDomainMap() {
-	var moduleDomainMap ModuleDomainMap
 	mapFile, err := os.Open("moduledomainmap.json")
 	defer mapFile.Close()
 	byteValue, _ := ioutil.ReadAll(mapFile)
@@ -34,4 +81,8 @@ func LoadDomainMap() {
 	}
 	_ = json.Unmarshal([]byte(byteValue), &moduleDomainMap)
 	fmt.Println("LoadDomainMap- ", moduleDomainMap)
+}
+
+func GetModuleDomainMap() ModuleDomainMap {
+	return moduleDomainMap
 }
