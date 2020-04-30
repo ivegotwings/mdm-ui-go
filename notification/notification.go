@@ -15,6 +15,7 @@ import (
 	"github.com/ivegotwings/mdm-ui-go/connection"
 	"github.com/ivegotwings/mdm-ui-go/moduleversion"
 	"github.com/ivegotwings/mdm-ui-go/state"
+	"github.com/ivegotwings/mdm-ui-go/typedomain"
 	"github.com/ivegotwings/mdm-ui-go/utils"
 )
 
@@ -290,6 +291,12 @@ func sendNotification(notificationObject NotificationObject, tenantId string) er
 				return errors.New("sendNotification- cannot get VersionKey")
 			}
 			//NotificaitonPayloadQueue.Payload
+		} else {
+			typeDomain, err := typedomain.GetDomainForEntityType(userNotificationInfo.Context.Type)
+			if err != nil {
+				return err
+			}
+			fmt.Println(typeDomain)
 		}
 	}
 	return nil
@@ -401,7 +408,8 @@ func NotificationScheduler(ticker *time.Ticker, quit chan struct{}) {
 		select {
 		case <-ticker.C:
 			fmt.Println("NtoificationScheduler PayLoad Length ", len(NotificationPayloadQueue.Payload))
-			if len(NotificationPayloadQueue.Payload) > 0 {
+			payloadSize := len(NotificationPayloadQueue.Payload)
+			if payloadSize > 0 {
 				var uniqueVersionKeys = map[string]string{}
 				for _, payload := range NotificationPayloadQueue.Payload {
 					if uniqueVersionKeys[payload.VersionKey] != "done" {
@@ -433,7 +441,7 @@ func NotificationScheduler(ticker *time.Ticker, quit chan struct{}) {
 						redisBroadCastAdaptor.Send(nil, room, "event:notification", payload.UserNotificationInfo)
 					}
 				}
-				NotificationPayloadQueue.Payload = NotificationPayloadQueue.Payload[:0]
+				NotificationPayloadQueue.Payload = NotificationPayloadQueue.Payload[payloadSize:len(NotificationPayloadQueue.Payload)]
 			}
 		case <-quit:
 			ticker.Stop()
