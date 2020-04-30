@@ -43,7 +43,7 @@ func baseRouter(w http.ResponseWriter, r *http.Request) {
 func notifyRouterWrapper(redisBroadCastAdaptor *connection.Broadcast) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
-			err := notification.Notify(w, r, redisBroadCastAdaptor)
+			err := notification.Notify(w, r)
 			if err != nil {
 				fmt.Println("/api/notify error processing request ", err)
 			}
@@ -83,6 +83,7 @@ func main() {
 	}
 	var ticker *time.Ticker = time.NewTicker(time.Duration(config.NotificationInterval) * time.Millisecond)
 	var quit = make(chan struct{})
+	notification.SetRedisBroadCastAdaptor(redisBroadCastAdaptor)
 	go notification.NotificationScheduler(ticker, quit)
 
 	server.OnConnect("", func(so socketio.Conn) error {
@@ -111,11 +112,13 @@ func main() {
 			fmt.Println("debug ", userInfo, ok)
 			if ok {
 				//join user room
-				user_room := "socket_room_tenant_" + userInfo["tenantId"].(string) + "_user_" + userInfo["userId"].(string)
+				user_room := "socket_conn_room_tenant_" + userInfo["tenantId"].(string) + "_user_" + userInfo["userId"].(string)
 				err = redisBroadCastAdaptor.Join(user_room, so)
 				//join tenant room
-				tenant_room := "socket_room_tenant_" + userInfo["tenantId"].(string)
+				tenant_room := "socket_conn_room_tenant_" + userInfo["tenantId"].(string)
 				err = redisBroadCastAdaptor.Join(tenant_room, so)
+
+				fmt.Println(user_room, tenant_room)
 				if err != nil {
 					fmt.Println("Redis BroadCastManager- Failure to connect", err)
 				} else {

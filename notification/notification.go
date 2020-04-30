@@ -1,4 +1,3 @@
-//redisBroadCastAdaptor.Send(nil, "testroom", "event:notification", _message)
 package notification
 
 import (
@@ -217,8 +216,13 @@ var dataIndexMapping = map[string]string{
 
 var clientIdNotificationExlusionList = []string{"healthcheckClient"}
 var NotificationPayloadQueue NotificaitonPayloadQueue
+var redisBroadCastAdaptor *connection.Broadcast
 
-func Notify(w http.ResponseWriter, r *http.Request, redisBroadCastAdaptor *connection.Broadcast) error {
+func SetRedisBroadCastAdaptor(adaptor *connection.Broadcast) {
+	redisBroadCastAdaptor = adaptor
+}
+
+func Notify(w http.ResponseWriter, r *http.Request) error {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Error reading request body",
@@ -398,25 +402,38 @@ func NotificationScheduler(ticker *time.Ticker, quit chan struct{}) {
 		case <-ticker.C:
 			fmt.Println("NtoificationScheduler PayLoad Length ", len(NotificationPayloadQueue.Payload))
 			if len(NotificationPayloadQueue.Payload) > 0 {
+				var uniqueVersionKeys = map[string]string{}
 				for _, payload := range NotificationPayloadQueue.Payload {
-					conn := *state.Conn()
-					version, err := redis.Int(conn.Do("GET", payload.VersionKey))
-					//conn.Flush()
-					//version, err := conn.Receive()
-					if err == nil {
-						var newversion uint8
-						fmt.Println("MotificationScheduler versionKey verion", versionKey, version)
-						if version != 0 {
-							_version := uint8(version)
-							newversion = _version + 1
-						} else {
-							newversion = moduleversion.DEFAULT_VERSION
+					if uniqueVersionKeys[payload.VersionKey] != "done" {
+						uniqueVersionKeys[payload.VersionKey] = "done"
+						conn := *state.Conn()
+						version, err := redis.Int(conn.Do("GET", payload.VersionKey))
+						//conn.Flush()
+						//version, err := conn.Receive()
+						if err == nil {
+							var newversion uint8
+							fmt.Println("MotificationScheduler versionKey verion", payload.VersionKey, version)
+							if version != 0 {
+								_version := uint8(version)
+								newversion = _version + 1
+							} else {
+								newversion = moduleversion.DEFAULT_VERSION
+							}
+							conn.Send("SET", payload.VersionKey, newversion)
+							conn.Flush()
 						}
-						conn.Send("SET", payload.VersionKey, newversion)
-						conn.Flush()
-
+					}
+					var room string
+					if payload.UserInfo["tenantId"] != "" && payload.UserInfo["userId"] != "" {
+						room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"] + "_user_" + payload.UserInfo["userId"]
+						fmt.Println("Broadcasting to room", room)
+						redisBroadCastAdaptor.Send(nil, room, "event:notification", payload.UserNotificationInfo)
+					} else if payload.UserInfo["tenantId"] != "" {
+						room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"]
+						redisBroadCastAdaptor.Send(nil, room, "event:notification", payload.UserNotificationInfo)
 					}
 				}
+				NotificationPayloadQueue.Payload = NotificationPayloadQueue.Payload[:0]
 			}
 		case <-quit:
 			ticker.Stop()
