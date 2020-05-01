@@ -3,8 +3,8 @@ package typedomain
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 )
 
@@ -243,7 +243,7 @@ func GetDomainForEntityType(entityType string) (string, error) {
 				if json.Unmarshal(body, &response) != nil {
 					return "", err
 				}
-				fmt.Println("GetDomainForEntityType response", response)
+				log.Println("GetDomainForEntityType response", response)
 			}
 			defer resp.Body.Close()
 		}

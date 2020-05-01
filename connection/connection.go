@@ -1,7 +1,6 @@
 package connection
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/ivegotwings/mdm-ui-go/cmap_string_socket"
@@ -138,7 +137,7 @@ func (b Broadcast) onmessage(channel string, data []byte) error {
 
 	b.remote = true
 	for _, arg := range args {
-		fmt.Printf("- %d\n", arg)
+		log.Printf("- %d\n", arg)
 	}
 	b.SendSocket(ignore, room, message, args...)
 	return nil
@@ -201,7 +200,7 @@ func (b Broadcast) SendSocket(ignore socketio.Conn, room, message string, args .
 			s.Emit(message, args...)
 		}
 	} else {
-		fmt.Println("error sending message to room", room)
+		log.Println("error sending message to room", room)
 	}
 	return nil
 }

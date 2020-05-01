@@ -2,7 +2,7 @@ package state
 
 import (
 	"errors"
-	"fmt"
+	"log"
 
 	"github.com/garyburd/redigo/redis"
 )
@@ -10,7 +10,7 @@ import (
 var conn redis.Conn
 
 func Connect(opts map[string]string) error {
-	fmt.Println("state- redis config", opts)
+	log.Println("state- redis config", opts)
 	var ok bool
 	var err error
 	var host, port string

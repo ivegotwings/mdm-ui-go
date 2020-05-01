@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
@@ -129,8 +130,9 @@ type NotificationPayload struct {
 	VersionKey           string
 }
 
-type NotificaitonPayloadQueue struct {
-	Payload []NotificationPayload
+type _NotificationPayloadQueue struct {
+	Payload         []NotificationPayload
+	SocketWriteLock *sync.Mutex
 }
 
 type Properties struct {
@@ -216,14 +218,37 @@ var dataIndexMapping = map[string]string{
 }
 
 var clientIdNotificationExlusionList = []string{"healthcheckClient"}
-var NotificationPayloadQueue NotificaitonPayloadQueue
+var NotificationPayloadQueue = _NotificationPayloadQueue{
+	Payload:         []NotificationPayload{},
+	SocketWriteLock: &sync.Mutex{},
+}
 var redisBroadCastAdaptor *connection.Broadcast
+
+type NotificationHandler struct {
+	SocketWriteLock       *sync.Mutex
+	RedisBroadCastAdaptor connection.Broadcast
+}
 
 func SetRedisBroadCastAdaptor(adaptor *connection.Broadcast) {
 	redisBroadCastAdaptor = adaptor
 }
 
-func Notify(w http.ResponseWriter, r *http.Request) error {
+func (notificationHandler *NotificationHandler) Notify(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		err := processNotification(w, r, notificationHandler)
+		if err != nil {
+			log.Println("/api/notify error processing request ", err)
+		}
+	} else {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+	}
+	fmt.Fprint(w, "POST done")
+	w.Header().Set("Server", "A Go Web Server")
+	w.WriteHeader(200)
+
+}
+
+func processNotification(w http.ResponseWriter, r *http.Request, notificationHandler *NotificationHandler) error {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Error reading request body",
@@ -232,12 +257,12 @@ func Notify(w http.ResponseWriter, r *http.Request) error {
 	var _message Notification
 	err = json.Unmarshal(body, &_message)
 	if err != nil {
-		fmt.Println("ERR", err)
+		log.Println("ERR", err)
 		log.Println("notify error in processing body", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	} else {
-		fmt.Printf("Notify: %v\n", _message.NotificationObject)
+		log.Printf("Notify: %v\n", _message.NotificationObject)
 		tenantId := _message.TenantId
 		userId := _message.NotificationObject.Data.JsonData.ClientState.NotificationInfo.UserId
 		if tenantId != "" && userId != "" {
@@ -247,7 +272,7 @@ func Notify(w http.ResponseWriter, r *http.Request) error {
 			}
 			if clientId != "" {
 				if ok := utils.Contains(clientIdNotificationExlusionList, clientId); ok {
-					fmt.Println("Ignoring notification for clientId", clientId)
+					log.Println("Ignoring notification for clientId", clientId)
 				}
 				return sendNotification(_message.NotificationObject, tenantId)
 			} else {
@@ -265,10 +290,10 @@ func sendNotification(notificationObject NotificationObject, tenantId string) er
 	var userNotificationInfo UserNotificationInfo
 	err := prepareNotificationObject(&userNotificationInfo, notificationObject)
 	if err != nil {
-		fmt.Println("sendNotification- error in pepareNotificationObject ", err)
+		log.Println("sendNotification- error in pepareNotificationObject ", err)
 		return err
 	} else {
-		fmt.Printf("sendNotication userNotificationInfo: %v\n", userNotificationInfo)
+		log.Printf("sendNotication userNotificationInfo: %v\n", userNotificationInfo)
 		if userNotificationInfo.UserId == "" && userNotificationInfo.RequestStatus == "error" {
 			return errors.New("sendNotification- Invalid userId or RequestStatus")
 		}
@@ -285,7 +310,6 @@ func sendNotification(notificationObject NotificationObject, tenantId string) er
 					UserNotificationInfo: userNotificationInfo,
 					UserInfo:             userInfo,
 				}
-				fmt.Println("adding payload")
 				NotificationPayloadQueue.Payload = append(NotificationPayloadQueue.Payload, NotificationPayload)
 			} else {
 				return errors.New("sendNotification- cannot get VersionKey")
@@ -296,7 +320,18 @@ func sendNotification(notificationObject NotificationObject, tenantId string) er
 			if err != nil {
 				return err
 			}
-			fmt.Println(typeDomain)
+			versionKey, error := moduleversion.GetVersionKey(userNotificationInfo.DataIndex, typeDomain, tenantId)
+			if error == nil {
+				NotificationPayload := NotificationPayload{
+					VersionKey:           versionKey,
+					UserNotificationInfo: userNotificationInfo,
+					UserInfo:             userInfo,
+				}
+				log.Println("adding payload")
+				NotificationPayloadQueue.Payload = append(NotificationPayloadQueue.Payload, NotificationPayload)
+			} else {
+				return errors.New("sendNotification- cannot get VersionKey")
+			}
 		}
 	}
 	return nil
@@ -396,7 +431,7 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 		dataIndex = val
 	}
 
-	fmt.Println("setActionAndDataIndex- action & dataIndex", action, dataIndex)
+	log.Println("setActionAndDataIndex- action & dataIndex", action, dataIndex)
 
 	userNotificationInfo.Action = action
 	userNotificationInfo.DataIndex = dataIndex
@@ -407,7 +442,7 @@ func NotificationScheduler(ticker *time.Ticker, quit chan struct{}) {
 	for {
 		select {
 		case <-ticker.C:
-			fmt.Println("NtoificationScheduler PayLoad Length ", len(NotificationPayloadQueue.Payload))
+			log.Println("NtoificationScheduler PayLoad Length ", len(NotificationPayloadQueue.Payload))
 			payloadSize := len(NotificationPayloadQueue.Payload)
 			if payloadSize > 0 {
 				var uniqueVersionKeys = map[string]string{}
@@ -420,7 +455,7 @@ func NotificationScheduler(ticker *time.Ticker, quit chan struct{}) {
 						//version, err := conn.Receive()
 						if err == nil {
 							var newversion uint8
-							fmt.Println("MotificationScheduler versionKey verion", payload.VersionKey, version)
+							log.Println("MotificationScheduler versionKey verion", payload.VersionKey, version)
 							if version != 0 {
 								_version := uint8(version)
 								newversion = _version + 1
@@ -431,15 +466,17 @@ func NotificationScheduler(ticker *time.Ticker, quit chan struct{}) {
 							conn.Flush()
 						}
 					}
+					NotificationPayloadQueue.SocketWriteLock.Lock()
 					var room string
 					if payload.UserInfo["tenantId"] != "" && payload.UserInfo["userId"] != "" {
 						room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"] + "_user_" + payload.UserInfo["userId"]
-						fmt.Println("Broadcasting to room", room)
+						log.Println("Broadcasting to room", room)
 						redisBroadCastAdaptor.Send(nil, room, "event:notification", payload.UserNotificationInfo)
 					} else if payload.UserInfo["tenantId"] != "" {
 						room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"]
 						redisBroadCastAdaptor.Send(nil, room, "event:notification", payload.UserNotificationInfo)
 					}
+					NotificationPayloadQueue.SocketWriteLock.Unlock()
 				}
 				NotificationPayloadQueue.Payload = NotificationPayloadQueue.Payload[payloadSize:len(NotificationPayloadQueue.Payload)]
 			}

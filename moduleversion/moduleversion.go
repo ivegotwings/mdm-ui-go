@@ -3,8 +3,8 @@ package moduleversion
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 )
 
@@ -74,10 +74,10 @@ func LoadDomainMap() {
 	defer mapFile.Close()
 	byteValue, _ := ioutil.ReadAll(mapFile)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 	}
 	_ = json.Unmarshal([]byte(byteValue), &moduleDomainMap)
-	fmt.Println("LoadDomainMap- ", moduleDomainMap)
+	log.Println("LoadDomainMap- ", moduleDomainMap)
 }
 
 func GetModuleDomainMap() ModuleDomainMap {
