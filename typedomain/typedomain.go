@@ -210,17 +210,25 @@ func GetDomainForEntityType(entityType string) (string, error) {
 	lookUpValue := entityTypeDomainLookUp[entityType+"_entityType"]
 	if lookUpValue == "" {
 		//post call
-		var requestBody []byte = []byte(`{"params":{"query":{"ids":["entityType` + "_" + entityType + `"],"filters":{"typesCriterion":["` + entityType + `"]}},"fields": {"attributes": ["_ALL"],"relationships": ["_ALL"]}}}`)
-		fmt.Println("requestbody ", requestBody)
+		var requestBody []byte = []byte(`{"params":{"query":{"ids":["` + entityType + `_entityType"],"filters":{"typesCriterion":["entityType"]}},"fields": {"attributes": ["_ALL"],"relationships": ["_ALL"]}}}`)
 		req, err := http.NewRequest("POST", "http://manage.engg-az-dev2.riversand-dataplatform.com:8085/rdwengg-az-dev2/api/entitymodelservice/get", bytes.NewBuffer(requestBody))
 		if err != nil {
 			return "", err
 		} else {
 			req.Header.Set("x-rdp-tenantId", "rdwengg-az-dev2")
 			req.Header.Set("x-rdp-userId", "rdwadmin@riversand.com_user")
-			req.Header.Set("x-rdp-userroles", "[\"admin\"]")
-			req.Header.Set("x-rdp-clientId", "rufClient")
+			req.Header.Set("x-rdp-userRoles", "[\"admin\"]")
+			req.Header.Set("x-rdp-useremail", "rdwadmin@riversand.com")
+			req.Header.Set("x-rdp-defaultrole", "admin")
+			req.Header.Set("x-rdp-clientid", "rufClient")
+			req.Header.Set("x-rdp-ownershipdata", "")
+			req.Header.Set("x-rdp-ownershipeditdata", "")
+			req.Header.Set("x-rdp-useremail", "rdwadmin@riversand.com")
+			req.Header.Set("x-rdp-firstName", "rdw")
+			req.Header.Set("x-rdp-lastName", "admin")
+
 			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("x-rdp-authtoken", "m4eZW93FLaUAUfoR1vYEEfwTXr1wdbedZNss0aId6CQ=")
 
 			client := &http.Client{}
 			resp, err := client.Do(req)
@@ -228,7 +236,6 @@ func GetDomainForEntityType(entityType string) (string, error) {
 				return "", err
 			} else {
 				body, err := ioutil.ReadAll(resp.Body)
-				fmt.Println(body)
 				if err != nil {
 					return "", err
 				}
