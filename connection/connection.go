@@ -2,6 +2,7 @@ package connection
 
 import (
 	"log"
+	"sync"
 
 	"github.com/ivegotwings/mdm-ui-go/cmap_string_socket"
 
@@ -26,6 +27,8 @@ type Broadcast struct {
 	remote bool
 	rooms  cmap_string_cmap.ConcurrentMap
 }
+
+var roomWriteLock = map[string]*sync.Mutex{}
 
 //
 // opts: {
@@ -151,6 +154,7 @@ func (b Broadcast) Join(room string, socket socketio.Conn) error {
 	sockets.Set(socket.ID(), socket)
 	b.rooms.Set(room, sockets)
 	socket.Join(room)
+	roomWriteLock[room] = &sync.Mutex{}
 	return nil
 }
 
@@ -197,7 +201,9 @@ func (b Broadcast) SendSocket(ignore socketio.Conn, room, message string, args .
 			if ignore != nil && ignore.ID() == id {
 				continue
 			}
+			roomWriteLock[room].Lock()
 			s.Emit(message, args...)
+			roomWriteLock[room].Unlock()
 		}
 	} else {
 		log.Println("error sending message to room", room)

@@ -231,10 +231,7 @@ func SetRedisBroadCastAdaptor(adaptor *connection.Broadcast) {
 
 func (notificationHandler *NotificationHandler) Notify(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		err := processNotification(w, r, notificationHandler)
-		if err != nil {
-			log.Println("/api/notify error processing request ", err)
-		}
+		go processNotification(w, r, notificationHandler)
 	} else {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 	}
@@ -270,7 +267,7 @@ func processNotification(w http.ResponseWriter, r *http.Request, notificationHan
 				if ok := utils.Contains(clientIdNotificationExlusionList, clientId); ok {
 					log.Println("Ignoring notification for clientId", clientId)
 				}
-				return sendNotification(_message.NotificationObject, tenantId)
+				go sendNotification(_message.NotificationObject, tenantId)
 			} else {
 				err = errors.New("Notify- missing clientId")
 				return err
@@ -280,6 +277,7 @@ func processNotification(w http.ResponseWriter, r *http.Request, notificationHan
 			return err
 		}
 	}
+	return nil
 }
 
 func sendNotification(notificationObject NotificationObject, tenantId string) error {
