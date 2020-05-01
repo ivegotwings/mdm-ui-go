@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
@@ -131,8 +130,7 @@ type NotificationPayload struct {
 }
 
 type _NotificationPayloadQueue struct {
-	Payload         []NotificationPayload
-	SocketWriteLock *sync.Mutex
+	Payload []NotificationPayload
 }
 
 type Properties struct {
@@ -219,13 +217,11 @@ var dataIndexMapping = map[string]string{
 
 var clientIdNotificationExlusionList = []string{"healthcheckClient"}
 var NotificationPayloadQueue = _NotificationPayloadQueue{
-	Payload:         []NotificationPayload{},
-	SocketWriteLock: &sync.Mutex{},
+	Payload: []NotificationPayload{},
 }
 var redisBroadCastAdaptor *connection.Broadcast
 
 type NotificationHandler struct {
-	SocketWriteLock       *sync.Mutex
 	RedisBroadCastAdaptor connection.Broadcast
 }
 
@@ -466,7 +462,6 @@ func NotificationScheduler(ticker *time.Ticker, quit chan struct{}) {
 							conn.Flush()
 						}
 					}
-					NotificationPayloadQueue.SocketWriteLock.Lock()
 					var room string
 					if payload.UserInfo["tenantId"] != "" && payload.UserInfo["userId"] != "" {
 						room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"] + "_user_" + payload.UserInfo["userId"]
@@ -476,7 +471,6 @@ func NotificationScheduler(ticker *time.Ticker, quit chan struct{}) {
 						room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"]
 						redisBroadCastAdaptor.Send(nil, room, "event:notification", payload.UserNotificationInfo)
 					}
-					NotificationPayloadQueue.SocketWriteLock.Unlock()
 				}
 				NotificationPayloadQueue.Payload = NotificationPayloadQueue.Payload[payloadSize:len(NotificationPayloadQueue.Payload)]
 			}

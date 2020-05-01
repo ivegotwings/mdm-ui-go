@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -45,8 +44,8 @@ func baseRouter(w http.ResponseWriter, r *http.Request) {
 var redisBroadCastAdaptor connection.Broadcast
 
 func main() {
-	runtime.GOMAXPROCS(100)
-	fmt.Println(runtime.GOMAXPROCS(20))
+	///runtime.GOMAXPROCS(20)
+	log.Println(runtime.GOMAXPROCS(0))
 	log.SetOutput(ioutil.Discard)
 	server, err := socketio.NewServer(nil)
 	if err != nil {
