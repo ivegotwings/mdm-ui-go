@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/ivegotwings/mdm-ui-go/connection"
@@ -123,16 +122,6 @@ type Notification struct {
 	Properties         Properties         `json:"properties"`
 }
 
-type NotificationPayload struct {
-	UserNotificationInfo UserNotificationInfo
-	UserInfo             map[string]string
-	VersionKey           string
-}
-
-type _NotificationPayloadQueue struct {
-	Payload []NotificationPayload
-}
-
 type Properties struct {
 	CreatedService  string `json:"createdService"`
 	CreatedBy       string `json:"createdBy"`
@@ -216,17 +205,26 @@ var dataIndexMapping = map[string]string{
 }
 
 var clientIdNotificationExlusionList = []string{"healthcheckClient"}
-var NotificationPayloadQueue = _NotificationPayloadQueue{
-	Payload: []NotificationPayload{},
-}
+
 var redisBroadCastAdaptor *connection.Broadcast
 
 type NotificationHandler struct {
 	RedisBroadCastAdaptor connection.Broadcast
 }
 
+type NotificationPayload struct {
+	UserNotificationInfo UserNotificationInfo
+	UserInfo             map[string]string
+	VersionKey           string
+}
+
+var NotificationPayloadChannel = make(chan NotificationPayload)
+
 func SetRedisBroadCastAdaptor(adaptor *connection.Broadcast) {
 	redisBroadCastAdaptor = adaptor
+	var quit = make(chan struct{})
+	go NotificationScheduler(quit)
+
 }
 
 func (notificationHandler *NotificationHandler) Notify(w http.ResponseWriter, r *http.Request) {
@@ -299,12 +297,11 @@ func sendNotification(notificationObject NotificationObject, tenantId string) er
 		if userNotificationInfo.Action == actions["ModelImportComplete"] || userNotificationInfo.Action == actions["ModelImportCompletedWithErrors"] {
 			versionKey, error := moduleversion.GetVersionKey(userNotificationInfo.DataIndex, "", tenantId)
 			if error == nil {
-				NotificationPayload := NotificationPayload{
+				NotificationPayloadChannel <- NotificationPayload{
 					VersionKey:           versionKey,
 					UserNotificationInfo: userNotificationInfo,
 					UserInfo:             userInfo,
 				}
-				NotificationPayloadQueue.Payload = append(NotificationPayloadQueue.Payload, NotificationPayload)
 			} else {
 				return errors.New("sendNotification- cannot get VersionKey")
 			}
@@ -316,13 +313,12 @@ func sendNotification(notificationObject NotificationObject, tenantId string) er
 			}
 			versionKey, error := moduleversion.GetVersionKey(userNotificationInfo.DataIndex, typeDomain, tenantId)
 			if error == nil {
-				NotificationPayload := NotificationPayload{
+				NotificationPayloadChannel <- NotificationPayload{
 					VersionKey:           versionKey,
 					UserNotificationInfo: userNotificationInfo,
 					UserInfo:             userInfo,
 				}
 				log.Println("adding payload")
-				NotificationPayloadQueue.Payload = append(NotificationPayloadQueue.Payload, NotificationPayload)
 			} else {
 				return errors.New("sendNotification- cannot get VersionKey")
 			}
@@ -432,48 +428,40 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 	return err
 }
 
-func NotificationScheduler(ticker *time.Ticker, quit chan struct{}) {
+func NotificationScheduler(quit chan struct{}) {
 	for {
 		select {
-		case <-ticker.C:
-			log.Println("NtoificationScheduler PayLoad Length ", len(NotificationPayloadQueue.Payload))
-			payloadSize := len(NotificationPayloadQueue.Payload)
-			if payloadSize > 0 {
-				var uniqueVersionKeys = map[string]string{}
-				for _, payload := range NotificationPayloadQueue.Payload {
-					if uniqueVersionKeys[payload.VersionKey] != "done" {
-						uniqueVersionKeys[payload.VersionKey] = "done"
-						conn := *state.Conn()
-						version, err := redis.Int(conn.Do("GET", payload.VersionKey))
-						//conn.Flush()
-						//version, err := conn.Receive()
-						if err == nil {
-							var newversion uint8
-							log.Println("MotificationScheduler versionKey verion", payload.VersionKey, version)
-							if version != 0 {
-								_version := uint8(version)
-								newversion = _version + 1
-							} else {
-								newversion = moduleversion.DEFAULT_VERSION
-							}
-							conn.Send("SET", payload.VersionKey, newversion)
-							conn.Flush()
-						}
+		case payload := <-NotificationPayloadChannel:
+			var uniqueVersionKeys = map[string]string{}
+			if uniqueVersionKeys[payload.VersionKey] != "done" {
+				uniqueVersionKeys[payload.VersionKey] = "done"
+				conn := *state.Conn()
+				version, err := redis.Int(conn.Do("GET", payload.VersionKey))
+				//conn.Flush()
+				//version, err := conn.Receive()
+				if err == nil {
+					var newversion uint8
+					log.Println("MotificationScheduler versionKey verion", payload.VersionKey, version)
+					if version != 0 {
+						_version := uint8(version)
+						newversion = _version + 1
+					} else {
+						newversion = moduleversion.DEFAULT_VERSION
 					}
-					var room string
-					if payload.UserInfo["tenantId"] != "" && payload.UserInfo["userId"] != "" {
-						room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"] + "_user_" + payload.UserInfo["userId"]
-						log.Println("Broadcasting to room", room)
-						redisBroadCastAdaptor.Send(nil, room, "event:notification", payload.UserNotificationInfo)
-					} else if payload.UserInfo["tenantId"] != "" {
-						room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"]
-						redisBroadCastAdaptor.Send(nil, room, "event:notification", payload.UserNotificationInfo)
-					}
+					conn.Send("SET", payload.VersionKey, newversion)
+					conn.Flush()
 				}
-				NotificationPayloadQueue.Payload = NotificationPayloadQueue.Payload[payloadSize:len(NotificationPayloadQueue.Payload)]
+			}
+			var room string
+			if payload.UserInfo["tenantId"] != "" && payload.UserInfo["userId"] != "" {
+				room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"] + "_user_" + payload.UserInfo["userId"]
+				log.Println("Broadcasting to room", room)
+				redisBroadCastAdaptor.Send(nil, room, "event:notification", payload.UserNotificationInfo)
+			} else if payload.UserInfo["tenantId"] != "" {
+				room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"]
+				redisBroadCastAdaptor.Send(nil, room, "event:notification", payload.UserNotificationInfo)
 			}
 		case <-quit:
-			ticker.Stop()
 			return
 		}
 	}

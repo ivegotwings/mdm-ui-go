@@ -7,13 +7,14 @@ import (
 	"net/http"
 	"os"
 	"runtime"
-	"time"
 
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/ivegotwings/mdm-ui-go/connection"
 	"github.com/ivegotwings/mdm-ui-go/moduleversion"
 	"github.com/ivegotwings/mdm-ui-go/notification"
 	"github.com/ivegotwings/mdm-ui-go/state"
+	pm2io "github.com/keymetrics/pm2-io-apm-go"
+	"github.com/keymetrics/pm2-io-apm-go/structures"
 )
 
 type Config struct {
@@ -44,7 +45,18 @@ func baseRouter(w http.ResponseWriter, r *http.Request) {
 var redisBroadCastAdaptor connection.Broadcast
 
 func main() {
-	///runtime.GOMAXPROCS(20)
+	runtime.GOMAXPROCS(4)
+	// Create PM2 connector
+	//pm2 link sf7mwo5yxfdawcm xauiz97m6zsza77
+	pm2 := pm2io.Pm2Io{
+		Config: &structures.Config{
+			PublicKey:  "xauiz97m6zsza77",            // define the public key given in the dashboard
+			PrivateKey: "sf7mwo5yxfdawcm",            // define the private key given in the dashboard
+			Name:       "Golang Notification Server", // define an application name
+		},
+	}
+	pm2.Start()
+
 	log.Println(runtime.GOMAXPROCS(0))
 	log.SetOutput(ioutil.Discard)
 	server, err := socketio.NewServer(nil)
@@ -68,12 +80,10 @@ func main() {
 	//state channel
 	err = state.Connect(opts)
 	if err != nil {
+		//pm2io.Notifier.Error(err)
 		panic(err)
 	}
-	var ticker *time.Ticker = time.NewTicker(time.Duration(config.NotificationInterval) * time.Millisecond)
-	var quit = make(chan struct{})
 	notification.SetRedisBroadCastAdaptor(&redisBroadCastAdaptor)
-	go notification.NotificationScheduler(ticker, quit)
 
 	server.OnConnect("", func(so socketio.Conn) error {
 		so.SetContext("")

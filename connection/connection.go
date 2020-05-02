@@ -57,10 +57,12 @@ func Redis(opts map[string]string) *Broadcast {
 
 	pub, err := redis.Dial("tcp", b.host+":"+b.port)
 	if err != nil {
+		//pm2io.Notifier.Error(err)
 		panic(err)
 	}
 	sub, err := redis.Dial("tcp", b.host+":"+b.port)
 	if err != nil {
+		//pm2io.Notifier.Error(err)
 		panic(err)
 	}
 
