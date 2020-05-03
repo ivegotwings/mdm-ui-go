@@ -203,9 +203,17 @@ func (b Broadcast) SendSocket(ignore socketio.Conn, room, message string, args .
 			if ignore != nil && ignore.ID() == id {
 				continue
 			}
-			roomWriteLock[room].Lock()
-			s.Emit(message, args...)
-			roomWriteLock[room].Unlock()
+
+			go func() {
+				roomWriteLock[room].Lock()
+				s.Emit(message, args...)
+				roomWriteLock[room].Unlock()
+				defer func() {
+					if err := recover(); err != nil {
+						log.Println("panic occurred:", err)
+					}
+				}()
+			}()
 		}
 	} else {
 		log.Println("error sending message to room", room)
