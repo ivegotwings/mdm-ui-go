@@ -56,15 +56,15 @@
   version = "v1.4.2"
 
 [[projects]]
-  digest = "1:f58b7651e01bdf11e0564073745c613d8da55f49b67addbceab81e45653914c0"
+  branch = "master"
+  digest = "1:5778d4dbff60059226f274e4e596e31b7c77864de98db88ae1dbc5fc9581fc8b"
   name = "github.com/googollee/go-socket.io"
   packages = [
     ".",
     "parser",
   ]
   pruneopts = "UT"
-  revision = "a94b83ffe22a53b14946d177551f877cb7e95e57"
-  version = "v1.4.3"
+  revision = "88e44eae2d1d36c9e852a7e7ced2b30e89ffd64c"
 
 [[projects]]
   digest = "1:6d29f02f0f01c627c2be40fb7347669a9ff2aa215cb97747294c1d13ffa74bdd"

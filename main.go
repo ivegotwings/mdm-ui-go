@@ -7,14 +7,13 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"time"
 
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/ivegotwings/mdm-ui-go/connection"
 	"github.com/ivegotwings/mdm-ui-go/moduleversion"
 	"github.com/ivegotwings/mdm-ui-go/notification"
 	"github.com/ivegotwings/mdm-ui-go/state"
-	pm2io "github.com/keymetrics/pm2-io-apm-go"
-	"github.com/keymetrics/pm2-io-apm-go/structures"
 )
 
 type Config struct {
@@ -48,14 +47,14 @@ func main() {
 	runtime.GOMAXPROCS(4)
 	// Create PM2 connector
 	//pm2 link sf7mwo5yxfdawcm xauiz97m6zsza77
-	pm2 := pm2io.Pm2Io{
-		Config: &structures.Config{
-			PublicKey:  "xauiz97m6zsza77",            // define the public key given in the dashboard
-			PrivateKey: "sf7mwo5yxfdawcm",            // define the private key given in the dashboard
-			Name:       "Golang Notification Server", // define an application name
-		},
-	}
-	pm2.Start()
+	// pm2 := pm2io.Pm2Io{
+	// 	Config: &structures.Config{
+	// 		PublicKey:  "xauiz97m6zsza77",            // define the public key given in the dashboard
+	// 		PrivateKey: "sf7mwo5yxfdawcm",            // define the private key given in the dashboard
+	// 		Name:       "Golang Notification Server", // define an application name
+	// 	},
+	// }
+	// pm2.Start()
 
 	log.Println(runtime.GOMAXPROCS(0))
 	log.SetOutput(ioutil.Discard)
@@ -138,8 +137,14 @@ func main() {
 		RedisBroadCastAdaptor: redisBroadCastAdaptor,
 	}
 	http.Handle("/api/notify", http.HandlerFunc(notificationHandler.Notify))
+	client := &http.Server{
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  900 * time.Second,
+		Handler:      nil,
+		Addr:         ":5007",
+	}
 
 	log.Println("Serving at localhost:5007...")
-	log.Println("Serving at localhost:5007...")
-	log.Fatal(http.ListenAndServe(":5007", nil))
+	log.Fatal(client.ListenAndServe())
 }

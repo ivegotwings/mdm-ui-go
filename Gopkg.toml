@@ -33,6 +33,10 @@
   name = "github.com/googollee/go-socket.io"
   version = "1.4.3"
 
+[[override]]
+  branch = "master"
+  name = "github.com/googollee/go-socket.io"
+
 [[constraint]]
   branch = "master"
   name = "github.com/nu7hatch/gouuid"
