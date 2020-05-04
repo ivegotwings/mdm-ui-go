@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/ivegotwings/mdm-ui-go/cmap_string_socket"
+	"github.com/ivegotwings/mdm-ui-go/utils"
 
 	"github.com/ivegotwings/mdm-ui-go/cmap_string_cmap"
 
@@ -27,8 +28,6 @@ type Broadcast struct {
 	remote bool
 	rooms  cmap_string_cmap.ConcurrentMap
 }
-
-var roomWriteLock = map[string]*sync.Mutex{}
 
 //
 // opts: {
@@ -153,18 +152,24 @@ func (b Broadcast) Join(room string, socket socketio.Conn) error {
 	if !ok {
 		sockets = cmap_string_socket.New()
 	}
-	sockets.Set(socket.ID(), socket)
+	_socket := utils.SocketWithLock{
+		Socket: &socket,
+		Lock:   &sync.Mutex{},
+	}
+	s := *_socket.Socket
+	s.Join(room)
+	sockets.Set(socket.ID(), &_socket)
 	b.rooms.Set(room, sockets)
-	socket.Join(room)
-	roomWriteLock[room] = &sync.Mutex{}
+
 	return nil
 }
 
-func (b Broadcast) Leave(room string, socket socketio.Conn) error {
+func (b Broadcast) Leave(room string, _socket utils.SocketWithLock) error {
 	sockets, ok := b.rooms.Get(room)
 	if !ok {
 		return nil
 	}
+	socket := *_socket.Socket
 	sockets.Remove(socket.ID())
 	if sockets.IsEmpty() {
 		b.rooms.Remove(room)
@@ -195,19 +200,21 @@ func (b Broadcast) Send(ignore socketio.Conn, room, message string, args ...inte
 	return nil
 }
 func (b Broadcast) SendSocket(ignore socketio.Conn, room, message string, args ...interface{}) error {
-	sockets, ok := b.rooms.Get(room)
+	_sockets, ok := b.rooms.Get(room)
 	if ok {
-		for item := range sockets.Iter() {
+		for item := range _sockets.Iter() {
 			id := item.Key
-			s := item.Val
+
+			_socket := item.Val
 			if ignore != nil && ignore.ID() == id {
 				continue
 			}
 
 			go func() {
-				roomWriteLock[room].Lock()
+				s := *_socket.Socket
+				_socket.Lock.Lock()
 				s.Emit(message, args...)
-				roomWriteLock[room].Unlock()
+				defer _socket.Lock.Unlock()
 				defer func() {
 					if err := recover(); err != nil {
 						log.Println("panic occurred:", err)

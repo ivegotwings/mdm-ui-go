@@ -2,14 +2,6 @@
 
 
 [[projects]]
-  digest = "1:9909e0a06cff3bd88841c9d2e0cc91b0a431676009018c74c3315f33b49b0046"
-  name = "github.com/StackExchange/wmi"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "cbe66965904dbe8a6cd589e2298e5d8b986bd7dd"
-  version = "1.1.0"
-
-[[projects]]
   digest = "1:0594af97b2f4cec6554086eeace6597e20a4b69466eb4ada25adf9f4300dddd2"
   name = "github.com/garyburd/redigo"
   packages = [
@@ -19,25 +11,6 @@
   pruneopts = "UT"
   revision = "a69d19351219b6dd56f274f96d85a7014a2ec34e"
   version = "v1.6.0"
-
-[[projects]]
-  digest = "1:440028f55cb322d8cb5b9d5ebec298a00b7d74690a658fe6b1c0c0b44341bfae"
-  name = "github.com/go-ole/go-ole"
-  packages = [
-    ".",
-    "oleutil",
-  ]
-  pruneopts = "UT"
-  revision = "97b6244175ae18ea6eef668034fd6565847501c9"
-  version = "v1.2.4"
-
-[[projects]]
-  digest = "1:582b704bebaa06b48c29b0cec224a6058a09c86883aaddabde889cd1a5f73e1b"
-  name = "github.com/google/uuid"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
-  version = "v1.1.1"
 
 [[projects]]
   digest = "1:6973c2e8119789f8600a3eb9af765c57ea27824f1789198597d701c01abbc013"
@@ -75,28 +48,6 @@
   version = "v1.4.2"
 
 [[projects]]
-  digest = "1:7fae9ec96d10b2afce0da23c378c8b3389319b7f92fa092f2621bba3078cfb4b"
-  name = "github.com/hashicorp/golang-lru"
-  packages = ["simplelru"]
-  pruneopts = "UT"
-  revision = "14eae340515388ca95aa8e7b86f0de668e981f54"
-  version = "v0.5.4"
-
-[[projects]]
-  digest = "1:3fdb643d3a749a8810c9813a92a38ee2785152111774c7cf975e4f5a4a8799eb"
-  name = "github.com/keymetrics/pm2-io-apm-go"
-  packages = [
-    ".",
-    "features",
-    "features/metrics",
-    "services",
-    "structures",
-  ]
-  pruneopts = "UT"
-  revision = "63b337a500c597d1088c15c0cff28d981ecc4b6a"
-  version = "v0.0.1"
-
-[[projects]]
   branch = "master"
   digest = "1:0e1e5f960c58fdc677212fcc70e55042a0084d367623e51afbdb568963832f5d"
   name = "github.com/nu7hatch/gouuid"
@@ -104,86 +55,12 @@
   pruneopts = "UT"
   revision = "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
 
-[[projects]]
-  digest = "1:c24c91cff3badb88be54fbda7e1603752bca2f6e0e1bb15ace697003e4485f0b"
-  name = "github.com/openzipkin/zipkin-go"
-  packages = [
-    ".",
-    "idgenerator",
-    "model",
-    "propagation",
-    "reporter",
-  ]
-  pruneopts = "UT"
-  revision = "c29478e51bfb2e9c93e0e9f5e015e5993a490399"
-  version = "v0.2.2"
-
-[[projects]]
-  branch = "master"
-  digest = "1:5f81e80915d9312397c603b6da6f751a4ae36ae2b4d4f0474a34241d95738686"
-  name = "github.com/pbnjay/memory"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "974d429e7ae40c89e7dcd41cfcc22a0bfbe42510"
-
-[[projects]]
-  digest = "1:9e1d37b58d17113ec3cb5608ac0382313c5b59470b94ed97d0976e69c7022314"
-  name = "github.com/pkg/errors"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "614d223910a179a466c1767a985424175c39b465"
-  version = "v0.9.1"
-
-[[projects]]
-  digest = "1:8267644d83ffea27fa30564cc199bd0dfa85670e89f6a2a200033e4b736dc524"
-  name = "github.com/shirou/gopsutil"
-  packages = [
-    "cpu",
-    "internal/common",
-    "load",
-    "mem",
-    "net",
-    "process",
-  ]
-  pruneopts = "UT"
-  revision = "a81cf97fce2300934e6c625b9917103346c26ba3"
-  version = "v2.20.4"
-
-[[projects]]
-  digest = "1:1b10a8feddea0d04248a499b52d5b902ae71e645c98256284951f0a6278d5c21"
-  name = "go.opencensus.io"
-  packages = [
-    ".",
-    "exporter/zipkin",
-    "internal",
-    "trace",
-    "trace/internal",
-    "trace/tracestate",
-  ]
-  pruneopts = "UT"
-  revision = "75c0cca22312e51bfd4fafdbe9197ae399e18b38"
-  version = "v0.20.2"
-
-[[projects]]
-  branch = "master"
-  digest = "1:7d31db4d19257907f7366d79630cf08c1550604f93fe2507a1713bcce13e55fa"
-  name = "golang.org/x/sys"
-  packages = [
-    "internal/unsafeheader",
-    "unix",
-    "windows",
-  ]
-  pruneopts = "UT"
-  revision = "bc7a7d42d5c30f4d0fe808715c002826ce2c624e"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
     "github.com/garyburd/redigo/redis",
     "github.com/googollee/go-socket.io",
-    "github.com/keymetrics/pm2-io-apm-go",
-    "github.com/keymetrics/pm2-io-apm-go/structures",
     "github.com/nu7hatch/gouuid",
   ]
   solver-name = "gps-cdcl"
