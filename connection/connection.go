@@ -1,7 +1,6 @@
 package connection
 
 import (
-	"log"
 	"sync"
 
 	"github.com/ivegotwings/mdm-ui-go/cmap_string_socket"
@@ -70,7 +69,7 @@ func Redis(opts map[string]string) *Broadcast {
 
 	uid, err := uuid.NewV4()
 	if err != nil {
-		utils.Println("", "", "connection.go", "", "error generating uid: "+err.Error())
+		utils.Println("", "", "connection.go", "", "error generating uid: "+err.Error(), "", nil)
 		return nil
 	}
 	b.uid = uid.String()
@@ -86,17 +85,17 @@ func Redis(opts map[string]string) *Broadcast {
 		for {
 			switch n := b.sub.Receive().(type) {
 			case redis.Message:
-				log.Printf("Message: %s %s\n", n.Channel, n.Data)
+				utils.PrintDebug("Redis Message: %s %s\n", n.Channel, n.Data)
 			case redis.PMessage:
 				b.onmessage(n.Channel, n.Data)
-				log.Printf("PMessage: %s %s %s\n", n.Pattern, n.Channel, n.Data)
+				utils.PrintDebug("PMessage: %s %s %s\n", n.Pattern, n.Channel, n.Data)
 			case redis.Subscription:
-				log.Printf("Subscription: %s %s %d\n", n.Kind, n.Channel, n.Count)
+				utils.PrintDebug("Subscription: %s %s %d\n", n.Kind, n.Channel, n.Count)
 				if n.Count == 0 {
 					return
 				}
 			case error:
-				log.Printf("error: %v\n", n)
+				utils.PrintDebug("error: %v\n", n)
 				return
 			}
 		}
@@ -125,23 +124,23 @@ func (b Broadcast) onmessage(channel string, data []byte) error {
 	opts := out["opts"]
 	ignore, ok := opts[0].(socketio.Conn)
 	if !ok {
-		utils.PrintInfo("ignore is not a socket")
+		utils.PrintDebug("ignore is not a socket %+v\n", ignore)
 		ignore = nil
 	}
 	room, ok := opts[1].(string)
 	if !ok {
-		utils.PrintInfo("room is not a string")
+		utils.PrintDebug("room is not a string %s", room)
 		room = ""
 	}
 	message, ok := opts[2].(string)
 	if !ok {
-		utils.PrintInfo("message is not a string")
+		utils.PrintDebug("message is not a string %s", message)
 		message = ""
 	}
 
 	b.remote = true
 	for _, arg := range args {
-		log.Printf("- %d\n", arg)
+		utils.PrintDebug("Redis PUBSUB message args- %d\n", arg)
 	}
 	b.SendSocket(ignore, room, message, args...)
 	return nil
@@ -217,7 +216,7 @@ func (b Broadcast) SendSocket(ignore socketio.Conn, room, message string, args .
 				defer _socket.Lock.Unlock()
 				defer func() {
 					if err := recover(); err != nil {
-						utils.Println("panic", "", "connection.go", "", "panic: "+err.(string))
+						utils.Println("panic", "", "connection.go", "", "panic: "+err.(string), "", nil)
 					}
 				}()
 			}()

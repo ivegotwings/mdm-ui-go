@@ -2,6 +2,7 @@ package utils
 
 import (
 	"log"
+	"os"
 	"sync"
 
 	socketio "github.com/googollee/go-socket.io"
@@ -21,11 +22,18 @@ func Contains(arr []string, str string) bool {
 	return false
 }
 
-func PrintInfo(message string) {
-	Println("info", "", "", "", message)
+func PrintDebug(format string, messagef ...interface{}) {
+	if os.Getenv("LOG_LEVEL") == "DEBUG" {
+		Println("debug", "", "", "", "", format, messagef...)
+	}
 }
 
-func Println(loglevel string, tenantId string, calleeServiceName string, userId string, message string) {
+func PrintInfo(message string) {
+	var v []interface{}
+	Println("info", "", "", "", message, "%s", v)
+}
+
+func Println(loglevel string, tenantId string, calleeServiceName string, userId string, message string, format string, messagef ...interface{}) {
 	// "requestId", "guid", "tenantId", "callerServiceName", "calleeServiceName",
 	// "relatedRequestId", "groupRequestId", "taskId", "userId", "entityId",
 	// "objectType", "className", "method", "newTimestamp", "action",
@@ -40,5 +48,7 @@ func Println(loglevel string, tenantId string, calleeServiceName string, userId 
 	case "info":
 		log.Println(messageTemplate)
 		break
+	case "debug":
+		log.Printf(`[`+loglevel+`] [] [] [`+tenantId+`] [Go-Notification] [`+calleeServiceName+`] [] [] [] [`+userId+`] [] [] [] [] [] [] [] [] [] [`+format+`]`, messagef...)
 	}
 }

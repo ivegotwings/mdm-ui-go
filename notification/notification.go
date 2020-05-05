@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -233,7 +232,7 @@ func (notificationHandler *NotificationHandler) Notify(w http.ResponseWriter, r 
 	} else {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 	}
-	fmt.Fprint(w, "POST done")
+	fmt.Fprint(w, "done")
 	w.Header().Set("Server", "A Go Web Server")
 	w.WriteHeader(200)
 
@@ -252,7 +251,7 @@ func processNotification(w http.ResponseWriter, r *http.Request, notificationHan
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	} else {
-		log.Printf("Notify: %v\n", _message.NotificationObject)
+		utils.PrintDebug("NotificationObject- %v\n", _message.NotificationObject)
 		tenantId := _message.TenantId
 		userId := _message.NotificationObject.Data.JsonData.ClientState.NotificationInfo.UserId
 		if tenantId != "" && userId != "" {
@@ -316,7 +315,7 @@ func sendNotification(notificationObject NotificationObject, tenantId string) er
 					UserNotificationInfo: userNotificationInfo,
 					UserInfo:             userInfo,
 				}
-				utils.PrintInfo("adding payload")
+				utils.PrintDebug("adding payload %+v\n", userNotificationInfo)
 			} else {
 				return errors.New("sendNotification- cannot get VersionKey")
 			}
@@ -418,7 +417,7 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 	if val, ok := dataIndexMapping[userNotificationInfo.ServiceName]; ok {
 		dataIndex = val
 	}
-	//log.Printf("setActionAndDataIndex- action & dataIndex", action, dataIndex)
+	utils.PrintDebug("setActionAndDataIndex- action & dataIndex %s %s", action, dataIndex)
 
 	userNotificationInfo.Action = action
 	userNotificationInfo.DataIndex = dataIndex
@@ -438,7 +437,7 @@ func NotificationScheduler(quit chan struct{}) {
 				//version, err := conn.Receive()
 				if err == nil {
 					var newversion uint8
-					//log.Printf("MotificationScheduler versionKey verion", payload.VersionKey, version)
+					utils.PrintDebug("MotificationScheduler versionKey version %s %s", payload.VersionKey, version)
 					if version != 0 {
 						_version := uint8(version)
 						newversion = _version + 1
@@ -452,7 +451,7 @@ func NotificationScheduler(quit chan struct{}) {
 			var room string
 			if payload.UserInfo["tenantId"] != "" && payload.UserInfo["userId"] != "" {
 				room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"] + "_user_" + payload.UserInfo["userId"]
-				//utils.Printf("Broadcasting to room:" + room)
+				utils.PrintDebug("Broadcasting to room: $s", room)
 				redisBroadCastAdaptor.Send(nil, room, "event:notification", payload.UserNotificationInfo)
 			} else if payload.UserInfo["tenantId"] != "" {
 				room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"]
