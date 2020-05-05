@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
@@ -243,7 +242,6 @@ func GetDomainForEntityType(entityType string) (string, error) {
 				if json.Unmarshal(body, &response) != nil {
 					return "", err
 				}
-				log.Println("GetDomainForEntityType response", response)
 			}
 			defer resp.Body.Close()
 		}

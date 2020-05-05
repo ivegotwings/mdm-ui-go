@@ -248,8 +248,7 @@ func processNotification(w http.ResponseWriter, r *http.Request, notificationHan
 	var _message Notification
 	err = json.Unmarshal(body, &_message)
 	if err != nil {
-		log.Println("ERR", err)
-		log.Println("notify error in processing body", err)
+		utils.PrintInfo("notify error in processing body: " + err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	} else {
@@ -263,7 +262,7 @@ func processNotification(w http.ResponseWriter, r *http.Request, notificationHan
 			}
 			if clientId != "" {
 				if ok := utils.Contains(clientIdNotificationExlusionList, clientId); ok {
-					log.Println("Ignoring notification for clientId", clientId)
+					utils.PrintInfo("Ignoring notification for clientId: " + clientId)
 				}
 				go sendNotification(_message.NotificationObject, tenantId)
 			} else {
@@ -282,10 +281,9 @@ func sendNotification(notificationObject NotificationObject, tenantId string) er
 	var userNotificationInfo UserNotificationInfo
 	err := prepareNotificationObject(&userNotificationInfo, notificationObject)
 	if err != nil {
-		log.Println("sendNotification- error in pepareNotificationObject ", err)
+		utils.PrintInfo("sendNotification- error in pepareNotificationObject " + err.Error())
 		return err
 	} else {
-		log.Printf("sendNotication userNotificationInfo: %v\n", userNotificationInfo)
 		if userNotificationInfo.UserId == "" && userNotificationInfo.RequestStatus == "error" {
 			return errors.New("sendNotification- Invalid userId or RequestStatus")
 		}
@@ -318,7 +316,7 @@ func sendNotification(notificationObject NotificationObject, tenantId string) er
 					UserNotificationInfo: userNotificationInfo,
 					UserInfo:             userInfo,
 				}
-				log.Println("adding payload")
+				utils.PrintInfo("adding payload")
 			} else {
 				return errors.New("sendNotification- cannot get VersionKey")
 			}
@@ -420,8 +418,7 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 	if val, ok := dataIndexMapping[userNotificationInfo.ServiceName]; ok {
 		dataIndex = val
 	}
-
-	log.Println("setActionAndDataIndex- action & dataIndex", action, dataIndex)
+	//log.Printf("setActionAndDataIndex- action & dataIndex", action, dataIndex)
 
 	userNotificationInfo.Action = action
 	userNotificationInfo.DataIndex = dataIndex
@@ -441,7 +438,7 @@ func NotificationScheduler(quit chan struct{}) {
 				//version, err := conn.Receive()
 				if err == nil {
 					var newversion uint8
-					log.Println("MotificationScheduler versionKey verion", payload.VersionKey, version)
+					//log.Printf("MotificationScheduler versionKey verion", payload.VersionKey, version)
 					if version != 0 {
 						_version := uint8(version)
 						newversion = _version + 1
@@ -455,7 +452,7 @@ func NotificationScheduler(quit chan struct{}) {
 			var room string
 			if payload.UserInfo["tenantId"] != "" && payload.UserInfo["userId"] != "" {
 				room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"] + "_user_" + payload.UserInfo["userId"]
-				log.Println("Broadcasting to room", room)
+				//utils.Printf("Broadcasting to room:" + room)
 				redisBroadCastAdaptor.Send(nil, room, "event:notification", payload.UserNotificationInfo)
 			} else if payload.UserInfo["tenantId"] != "" {
 				room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"]

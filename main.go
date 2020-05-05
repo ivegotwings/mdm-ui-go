@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strconv"
 	"time"
 
 	socketio "github.com/googollee/go-socket.io"
@@ -14,6 +15,7 @@ import (
 	"github.com/ivegotwings/mdm-ui-go/moduleversion"
 	"github.com/ivegotwings/mdm-ui-go/notification"
 	"github.com/ivegotwings/mdm-ui-go/state"
+	"github.com/ivegotwings/mdm-ui-go/utils"
 )
 
 type Config struct {
@@ -30,7 +32,7 @@ func LoadConfiguration(file string) Config {
 	defer configFile.Close()
 	byteValue, _ := ioutil.ReadAll(configFile)
 	if err != nil {
-		log.Println(err.Error())
+		utils.PrintInfo(err.Error())
 	}
 	_ = json.Unmarshal([]byte(byteValue), &config)
 	return config
@@ -44,7 +46,18 @@ func baseRouter(w http.ResponseWriter, r *http.Request) {
 var redisBroadCastAdaptor connection.Broadcast
 
 func main() {
+	//log.SetOutput(ioutil.Discard)
+	//log.SetOutput(os.Stderr)
+
+	f, err := os.OpenFile("/var/lib/rs/dataplatform.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+	defer f.Close()
+
+	log.SetOutput(f)
 	runtime.GOMAXPROCS(4)
+
 	// Create PM2 connector
 	//pm2 link sf7mwo5yxfdawcm xauiz97m6zsza77
 	// pm2 := pm2io.Pm2Io{
@@ -56,18 +69,16 @@ func main() {
 	// }
 	// pm2.Start()
 
-	log.Println(runtime.GOMAXPROCS(0))
-	log.SetOutput(ioutil.Discard)
+	utils.PrintInfo("GOMAXPROCS: " + strconv.Itoa(runtime.GOMAXPROCS(0)))
 	server, err := socketio.NewServer(nil)
 	if err != nil {
-		log.Println(err)
+		utils.PrintInfo("Failed to create socket server: " + err.Error())
 		log.Fatal(err)
 	}
 
 	var config Config = LoadConfiguration("config.json")
 	b, err := json.Marshal(config)
-	log.Println("Redis Config-")
-	log.Println(string(b))
+	utils.PrintInfo("Redis Config: " + string(b))
 	//pre load the map once
 	moduleversion.LoadDomainMap()
 
@@ -88,26 +99,23 @@ func main() {
 		so.SetContext("")
 		err := redisBroadCastAdaptor.Join("testroom", so)
 		if err != nil {
-			log.Println("Redis BroadCastManager- Failure to connect", err)
+			utils.PrintInfo("Redis BroadCastManager- Failure to connect " + err.Error())
 		}
-		log.Println("connected:", so.ID())
-		log.Println("connected:", so.ID())
+		utils.PrintInfo("connected socketId: " + so.ID())
 
 		return nil
 	})
 	server.OnError("error", func(so socketio.Conn, err error) {
-		log.Println("error:", err)
+		utils.PrintInfo("error: " + err.Error())
 	})
 
 	server.OnEvent("/", "event:adduser", func(so socketio.Conn, msg string) {
-		log.Println("event:adduser", msg)
 		var _userInfo interface{}
 		err := json.Unmarshal([]byte(msg), &_userInfo)
 		if err != nil {
-			log.Println("error processing event:adduser")
+			utils.PrintInfo("error processing event:adduser")
 		} else {
 			userInfo, ok := _userInfo.(map[string]interface{})
-			log.Println("debug ", userInfo, ok)
 			if ok {
 				//join user room
 				user_room := "socket_conn_room_tenant_" + userInfo["tenantId"].(string) + "_user_" + userInfo["userId"].(string)
@@ -115,12 +123,10 @@ func main() {
 				//join tenant room
 				tenant_room := "socket_conn_room_tenant_" + userInfo["tenantId"].(string)
 				err = redisBroadCastAdaptor.Join(tenant_room, so)
-
-				log.Println(user_room, tenant_room)
 				if err != nil {
-					log.Println("Redis BroadCastManager- Failure to connect", err)
+					utils.PrintInfo("Redis BroadCastManager- Failure to connect: " + err.Error())
 				} else {
-					log.Println("adding new user to rooms", user_room, tenant_room)
+					utils.PrintInfo("adding new user to rooms: " + user_room + tenant_room)
 					so.Emit("event:message", _userInfo)
 				}
 			}
@@ -138,13 +144,13 @@ func main() {
 	}
 	http.Handle("/api/notify", http.HandlerFunc(notificationHandler.Notify))
 	client := &http.Server{
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  900 * time.Second,
+		ReadTimeout:  6 * time.Second,
+		WriteTimeout: 6 * time.Second,
+		IdleTimeout:  100 * time.Millisecond,
 		Handler:      nil,
 		Addr:         ":5007",
 	}
 
-	log.Println("Serving at localhost:5007...")
+	utils.PrintInfo("Serving at localhost:5007...")
 	log.Fatal(client.ListenAndServe())
 }

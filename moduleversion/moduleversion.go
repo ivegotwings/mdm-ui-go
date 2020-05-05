@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"log"
 	"os"
+
+	"github.com/ivegotwings/mdm-ui-go/utils"
 )
 
 var MODULE_VERSION_KEY string = "-runtime-module-version"
@@ -74,10 +75,9 @@ func LoadDomainMap() {
 	defer mapFile.Close()
 	byteValue, _ := ioutil.ReadAll(mapFile)
 	if err != nil {
-		log.Println(err.Error())
+		utils.PrintInfo(err.Error())
 	}
 	_ = json.Unmarshal([]byte(byteValue), &moduleDomainMap)
-	log.Println("LoadDomainMap- ", moduleDomainMap)
 }
 
 func GetModuleDomainMap() ModuleDomainMap {

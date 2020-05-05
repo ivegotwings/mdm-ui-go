@@ -70,7 +70,7 @@ func Redis(opts map[string]string) *Broadcast {
 
 	uid, err := uuid.NewV4()
 	if err != nil {
-		log.Println("error generating uid:", err)
+		utils.Println("", "", "connection.go", "", "error generating uid: "+err.Error())
 		return nil
 	}
 	b.uid = uid.String()
@@ -110,14 +110,14 @@ func (b Broadcast) onmessage(channel string, data []byte) error {
 	//pieces := strings.Split(channel, "#")
 	//uid := pieces[len(pieces)-1]
 	// if b.uid == uid && b.uid != "1" {
-	// 	log.Println("ignore same uid")
+	// 	utils.PrintInfo("ignore same uid")
 	// 	return nil
 	// }
 
 	var out map[string][]interface{}
 	err := json.Unmarshal(data, &out)
 	if err != nil {
-		log.Println("error decoding data")
+		utils.PrintInfo("error decoding data")
 		return nil
 	}
 
@@ -125,17 +125,17 @@ func (b Broadcast) onmessage(channel string, data []byte) error {
 	opts := out["opts"]
 	ignore, ok := opts[0].(socketio.Conn)
 	if !ok {
-		log.Println("ignore is not a socket")
+		utils.PrintInfo("ignore is not a socket")
 		ignore = nil
 	}
 	room, ok := opts[1].(string)
 	if !ok {
-		log.Println("room is not a string")
+		utils.PrintInfo("room is not a string")
 		room = ""
 	}
 	message, ok := opts[2].(string)
 	if !ok {
-		log.Println("message is not a string")
+		utils.PrintInfo("message is not a string")
 		message = ""
 	}
 
@@ -217,13 +217,13 @@ func (b Broadcast) SendSocket(ignore socketio.Conn, room, message string, args .
 				defer _socket.Lock.Unlock()
 				defer func() {
 					if err := recover(); err != nil {
-						log.Println("panic occurred:", err)
+						utils.Println("panic", "", "connection.go", "", "panic: "+err.(string))
 					}
 				}()
 			}()
 		}
 	} else {
-		log.Println("error sending message to room", room)
+		utils.PrintInfo("error sending message to room: " + room)
 	}
 	return nil
 }

@@ -2,15 +2,14 @@ package state
 
 import (
 	"errors"
-	"log"
 
 	"github.com/garyburd/redigo/redis"
+	"github.com/ivegotwings/mdm-ui-go/utils"
 )
 
 var conn redis.Conn
 
 func Connect(opts map[string]string) error {
-	log.Println("state- redis config", opts)
 	var ok bool
 	var err error
 	var host, port string
@@ -25,6 +24,7 @@ func Connect(opts map[string]string) error {
 	conn, err = redis.Dial("tcp", host+":"+port)
 
 	if err != nil {
+		utils.PrintInfo("state- unable to connect to redis")
 		return errors.New("state- unable to connect to redis")
 	}
 	return nil
