@@ -3,6 +3,7 @@ package typedomain
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 )
@@ -205,8 +206,77 @@ var entityTypeDomainLookUp = map[string]string{
 	"dashboard_entityType":                      "visualization",
 }
 
+type EntityModel struct {
+	Domain string `json:"domain"`
+}
+
+type TypeDomainResponseBody struct {
+	EntityModels []EntityModel `json:"entityModels"`
+}
+
+type TypeDomainResponse struct {
+	Response TypeDomainResponseBody `json:"response"`
+}
+
+// {
+// 	"request":{
+// 	   "returnRequest":false,
+// 	   "params":{
+
+// 	   },
+// 	   "requestId":"701e1dde-5505-424f-a445-b922bf8ea57d"
+// 	},
+// 	"response":{
+// 	   "entityModels":[
+// 		  {
+// 			 "id":"uomLengthWithoutFormula3_entityType",
+// 			 "name":"uomLengthWithoutFormula3",
+// 			 "type":"entityType",
+// 			 "domain":"UOMData",
+// 			 "source":"internal",
+// 			 "properties":{
+// 				"externalName":"Length Without Formula3",
+// 				"baseUnitSymbol":"m",
+// 				"createdService":"entityManageModelService",
+// 				"createdBy":"rdwadmin@riversand.com_user",
+// 				"modifiedService":"entityManageModelService",
+// 				"modifiedBy":"rdwadmin@riversand.com_user",
+// 				"createdDate":"2020-01-04T11:00:57.532-0600",
+// 				"modifiedDate":"2020-01-04T11:00:57.532-0600"
+// 			 },
+// 			 "data":{
+// 				"attributes":{
+// 				   "baseUnitSymbol":{
+// 					  "values":[
+// 						 {
+// 							"locale":"en-US",
+// 							"source":"internal",
+// 							"id":"70d9e38e-91df-4244-bed6-d0c4dc7f86b9",
+// 							"value":"m"
+// 						 }
+// 					  ]
+// 				   },
+// 				   "externalName":{
+// 					  "values":[
+// 						 {
+// 							"locale":"en-US",
+// 							"source":"internal",
+// 							"id":"4a64d1a6-e5d7-489e-84fa-3c91fd8ed122",
+// 							"value":"Length Without Formula3"
+// 						 }
+// 					  ]
+// 				   }
+// 				}
+// 			 }
+// 		  }
+// 	   ],
+// 	   "status":"success",
+// 	   "totalRecords":1
+// 	}
+//  }
+
 func GetDomainForEntityType(entityType string) (string, error) {
-	lookUpValue := entityTypeDomainLookUp[entityType+"_entityType"]
+	lookUpValue := "" //entityTypeDomainLookUp[entityType+"_entityType"]
 	if lookUpValue == "" {
 		//post call
 		var requestBody []byte = []byte(`{"params":{"query":{"ids":["` + entityType + `_entityType"],"filters":{"typesCriterion":["entityType"]}},"fields": {"attributes": ["_ALL"],"relationships": ["_ALL"]}}}`)
@@ -238,9 +308,13 @@ func GetDomainForEntityType(entityType string) (string, error) {
 				if err != nil {
 					return "", err
 				}
-				var response interface{}
+				var response TypeDomainResponse
 				if json.Unmarshal(body, &response) != nil {
 					return "", err
+				}
+				lookUpValue = response.Response.EntityModels[0].Domain
+				if lookUpValue == "" {
+					return "", errors.New("doamin not found")
 				}
 			}
 			defer resp.Body.Close()
