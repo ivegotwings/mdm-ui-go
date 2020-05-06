@@ -87,8 +87,8 @@ func Redis(opts map[string]string) *Broadcast {
 			case redis.Message:
 				utils.PrintDebug("Redis Message: %s %s\n", n.Channel, n.Data)
 			case redis.PMessage:
-				b.onmessage(n.Channel, n.Data)
 				utils.PrintDebug("PMessage: %s %s %s\n", n.Pattern, n.Channel, n.Data)
+				b.onmessage(n.Channel, n.Data)
 			case redis.Subscription:
 				utils.PrintDebug("Subscription: %s %s %d\n", n.Kind, n.Channel, n.Count)
 				if n.Count == 0 {
