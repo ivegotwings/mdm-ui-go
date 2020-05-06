@@ -8,6 +8,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/ivegotwings/mdm-ui-go/executioncontext"
+	"github.com/ivegotwings/mdm-ui-go/utils"
 )
 
 // {
@@ -280,24 +283,27 @@ type TypeDomainResponse struct {
 	Response TypeDomainResponseBody `json:"response"`
 }
 
-func InitializeEntityTypeDomainMap() error {
+var tenantTypeDomainMap map[string]map[string]string
+
+func InitializeEntityTypeDomainMap(context executioncontext.Context) (map[string]string, error) {
 	var requestBody []byte = []byte(`{"params":{"query":{"filters":{"typesCriterion":["entityType"]}},"fields": {"attributes": ["_ALL"],"relationships": ["_ALL"]}}}`)
+	var entityTypeDomainLookUp map[string]string
 	req, err := http.NewRequest("POST", "http://manage.engg-az-dev2.riversand-dataplatform.com:8085/rdwengg-az-dev2/api/entitymodelservice/get", bytes.NewBuffer(requestBody))
 	if err != nil {
-		return err
+		return nil, err
 	} else {
-		req.Header.Set("x-rdp-tenantId", "rdwengg-az-dev2")
-		req.Header.Set("x-rdp-userId", "rdwadmin@riversand.com_user")
-		req.Header.Set("x-rdp-userRoles", "[\"admin\"]")
-		req.Header.Set("x-rdp-useremail", "rdwadmin@riversand.com")
-		req.Header.Set("x-rdp-defaultrole", "admin")
-		req.Header.Set("x-rdp-clientid", "rufClient")
-		req.Header.Set("x-rdp-ownershipdata", "")
-		req.Header.Set("x-rdp-ownershipeditdata", "")
-		req.Header.Set("x-rdp-useremail", "rdwadmin@riversand.com")
-		req.Header.Set("x-rdp-firstName", "rdw")
-		req.Header.Set("x-rdp-lastName", "admin")
-
+		fmt.Println("00")
+		req.Header.Set("x-rdp-tenantId", context.TenantId)
+		req.Header.Set("x-rdp-userId", context.UserId)
+		req.Header.Set("x-rdp-userRoles", context.UserRoles)
+		req.Header.Set("x-rdp-useremail", context.UserEmail)
+		req.Header.Set("x-rdp-defaultrole", context.DefaultRole)
+		req.Header.Set("x-rdp-clientid", context.ClientId)
+		req.Header.Set("x-rdp-ownershipdata", context.OwnershipData)
+		req.Header.Set("x-rdp-ownershipeditdata", context.OwnershipEditData)
+		req.Header.Set("x-rdp-useremail", context.UserEmail)
+		req.Header.Set("x-rdp-firstName", context.FirstName)
+		req.Header.Set("x-rdp-lastName", context.LastName)
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("x-rdp-authtoken", "m4eZW93FLaUAUfoR1vYEEfwTXr1wdbedZNss0aId6CQ=")
 
@@ -306,52 +312,70 @@ func InitializeEntityTypeDomainMap() error {
 		}
 		resp, err := client.Do(req)
 		if err != nil {
-			return err
+			return nil, err
 		} else {
 			body, err := ioutil.ReadAll(resp.Body)
+			fmt.Println("init bytes ", body)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			var response TypeDomainResponse
 			if json.Unmarshal(body, &response) != nil {
-				return err
+				return nil, err
 			}
+			fmt.Println("response Init ", response)
 			if len(response.Response.EntityModels) > 0 {
 				for _, entityModel := range response.Response.EntityModels {
 					entityTypeDomainLookUp[entityModel.Id] = entityModel.Domain
 				}
-				fmt.Println(entityTypeDomainLookUp)
 			} else {
-				return errors.New("Unable to fetch type domain map at startup")
+				return nil, errors.New("Unable to fetch type domain map for tenant")
 			}
 
 		}
 		defer resp.Body.Close()
 	}
-	return nil
+	return entityTypeDomainLookUp, nil
 }
 
-func GetDomainForEntityType(entityType string) (string, error) {
-	lookUpValue := entityTypeDomainLookUp[entityType+"_entityType"]
+func GetDomainForEntityType(entityType string, context executioncontext.Context) (string, error) {
+	fmt.Printf("%+v\n", context)
+	var lookUpValue string
+	if entityTypeDomainLookUp, ok := tenantTypeDomainMap[context.TenantId]; ok {
+		lookUpValue = entityTypeDomainLookUp[entityType+"_entityType"]
+	} else {
+		//we don't have the type-domain map for this tenant
+		typedomainmap, err := InitializeEntityTypeDomainMap(context)
+		if err == nil {
+			tenantTypeDomainMap[context.TenantId] = typedomainmap
+		} else {
+			fmt.Println(err)
+			if entityTypeDomainLookUp, ok := tenantTypeDomainMap[context.TenantId]; ok {
+				lookUpValue = entityTypeDomainLookUp[entityType+"_entityType"]
+				utils.PrintDebug("Type domain map for tenant "+context.TenantId+" %+v\n", typedomainmap)
+			}
+		}
+	}
 	if lookUpValue == "" {
 		//post call
+		utils.PrintDebug("No type domain lookup value found for entityType " + entityType + "_entityType")
+
 		var requestBody []byte = []byte(`{"params":{"query":{"ids":["` + entityType + `_entityType"],"filters":{"typesCriterion":["entityType"]}},"fields": {"attributes": ["_ALL"],"relationships": ["_ALL"]}}}`)
 		req, err := http.NewRequest("POST", "http://manage.engg-az-dev2.riversand-dataplatform.com:8085/rdwengg-az-dev2/api/entitymodelservice/get", bytes.NewBuffer(requestBody))
 		if err != nil {
 			return "", err
 		} else {
-			req.Header.Set("x-rdp-tenantId", "rdwengg-az-dev2")
-			req.Header.Set("x-rdp-userId", "rdwadmin@riversand.com_user")
-			req.Header.Set("x-rdp-userRoles", "[\"admin\"]")
-			req.Header.Set("x-rdp-useremail", "rdwadmin@riversand.com")
-			req.Header.Set("x-rdp-defaultrole", "admin")
-			req.Header.Set("x-rdp-clientid", "rufClient")
-			req.Header.Set("x-rdp-ownershipdata", "")
-			req.Header.Set("x-rdp-ownershipeditdata", "")
-			req.Header.Set("x-rdp-useremail", "rdwadmin@riversand.com")
-			req.Header.Set("x-rdp-firstName", "rdw")
-			req.Header.Set("x-rdp-lastName", "admin")
-
+			req.Header.Set("x-rdp-tenantId", context.TenantId)
+			req.Header.Set("x-rdp-userId", context.UserId)
+			req.Header.Set("x-rdp-userRoles", context.UserRoles)
+			req.Header.Set("x-rdp-useremail", context.UserEmail)
+			req.Header.Set("x-rdp-defaultrole", context.DefaultRole)
+			req.Header.Set("x-rdp-clientid", context.ClientId)
+			req.Header.Set("x-rdp-ownershipdata", context.OwnershipData)
+			req.Header.Set("x-rdp-ownershipeditdata", context.OwnershipEditData)
+			req.Header.Set("x-rdp-useremail", context.UserEmail)
+			req.Header.Set("x-rdp-firstName", context.FirstName)
+			req.Header.Set("x-rdp-lastName", context.LastName)
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("x-rdp-authtoken", "m4eZW93FLaUAUfoR1vYEEfwTXr1wdbedZNss0aId6CQ=")
 
@@ -370,8 +394,10 @@ func GetDomainForEntityType(entityType string) (string, error) {
 				if json.Unmarshal(body, &response) != nil {
 					return "", err
 				}
+				fmt.Println("response Get ", response)
 				if len(response.Response.EntityModels) > 0 {
 					lookUpValue = response.Response.EntityModels[0].Domain
+					utils.PrintDebug("domain for entityType "+entityType+"_entityType"+" %s", lookUpValue)
 					if lookUpValue == "" {
 						return "", errors.New("doamin not found for entityType" + entityType)
 					}
@@ -380,5 +406,6 @@ func GetDomainForEntityType(entityType string) (string, error) {
 			defer resp.Body.Close()
 		}
 	}
+	fmt.Println("lookup ", lookUpValue)
 	return lookUpValue, nil
 }
