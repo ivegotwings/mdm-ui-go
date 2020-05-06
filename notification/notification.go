@@ -1,6 +1,7 @@
 package notification
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"github.com/ivegotwings/mdm-ui-go/state"
 	"github.com/ivegotwings/mdm-ui-go/typedomain"
 	"github.com/ivegotwings/mdm-ui-go/utils"
+	"go.elastic.co/apm"
 )
 
 type UserNotificationInfo struct {
@@ -245,8 +247,10 @@ func (notificationHandler *NotificationHandler) Notify(w http.ResponseWriter, r 
 				"status": "success"
 			}
 			}`), &response)
-	context := executioncontext.GetContext(r)
 	if err == nil {
+		executionContext := executioncontext.GetContext(r)
+		ctx := r.Context()
+		go processNotification(body, executionContext, ctx)
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Server", "mdm-ui-go-notification")
 		json.NewEncoder(w).Encode(response)
@@ -256,12 +260,13 @@ func (notificationHandler *NotificationHandler) Notify(w http.ResponseWriter, r 
 		w.Header().Set("Server", "mdm-ui-go-notification")
 		w.WriteHeader(http.StatusOK)
 	}
-	go processNotification(body, context)
 }
 
-func processNotification(body []byte, context executioncontext.Context) error {
+func processNotification(body []byte, context executioncontext.Context, ctx context.Context) error {
+	span, ctx := apm.StartSpan(ctx, "goroutine:processNotification", "goroutine")
 	var _message Notification
 	err := json.Unmarshal(body, &_message)
+	defer span.End()
 	if err != nil {
 		utils.PrintInfo("notify error in processing body: " + err.Error())
 		return err
@@ -278,7 +283,7 @@ func processNotification(body []byte, context executioncontext.Context) error {
 				if ok := utils.Contains(clientIdNotificationExlusionList, clientId); ok {
 					utils.PrintInfo("Ignoring notification for clientId: " + clientId)
 				}
-				go sendNotification(_message.NotificationObject, tenantId, context)
+				sendNotification(_message.NotificationObject, tenantId, context)
 			} else {
 				err = errors.New("Notify- missing clientId")
 				return err

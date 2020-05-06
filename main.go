@@ -16,6 +16,7 @@ import (
 	"github.com/ivegotwings/mdm-ui-go/notification"
 	"github.com/ivegotwings/mdm-ui-go/state"
 	"github.com/ivegotwings/mdm-ui-go/utils"
+	"go.elastic.co/apm/module/apmhttp"
 )
 
 type Config struct {
@@ -140,7 +141,8 @@ func main() {
 	http.Handle("/socket.io/", server)
 	http.Handle("/", http.HandlerFunc(baseRouter))
 	notificationHandler := notification.NotificationHandler{}
-	http.Handle("/api/notify", http.HandlerFunc(notificationHandler.Notify))
+	tracedHandler := apmhttp.Wrap(http.HandlerFunc(notificationHandler.Notify))
+	http.Handle("/api/notify", tracedHandler)
 	client := &http.Server{
 		ReadTimeout:  6 * time.Second,
 		WriteTimeout: 6 * time.Second,
