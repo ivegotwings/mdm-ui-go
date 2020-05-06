@@ -19,17 +19,17 @@ import (
 
 type UserNotificationInfo struct {
 	NotificationInfo
-	RequestStatus        string
-	TaskId               string
-	TaskType             string
-	RequestId            string
-	ServiceName          string
-	Description          string
-	Status               string
-	Action               int
-	DataIndex            string
-	EmulatedSyncDownload bool
-	TenantId             string
+	RequestStatus        string `json:"requestStatus"`
+	TaskId               string `json:"taskId"`
+	TaskType             string `json:"taskType"`
+	RequestId            string `json:"requestId"`
+	ServiceName          string `json:"serviceName"`
+	Description          string `json:"description"`
+	Status               string `json:"status"`
+	Action               int    `json:"action"`
+	DataIndex            string `json:"dataIndex"`
+	EmulatedSyncDownload bool   `json:"emulatedSyncDownload"`
+	TenantId             string `json:"tenantId"`
 }
 
 type Context struct {
@@ -360,7 +360,11 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 		userNotificationInfo.Context = notificationObject.Data.JsonData.ClientState.NotificationInfo.Context
 		userNotificationInfo.EmulatedSyncDownload = notificationObject.Data.JsonData.ClientState.EmulatedSyncDownload
 		userNotificationInfo.Operation = notificationObject.Data.JsonData.ClientState.NotificationInfo.Operation
-		if userNotificationInfo.Context.Id == "" {
+		if userNotificationInfo.Context.Id != entityId {
+			userNotificationInfo.Context.Id = entityId
+			userNotificationInfo.Context.Type = entityType
+			userNotificationInfo.ShowNotificationToUser = false
+		} else if userNotificationInfo.Context.Id == "" {
 			userNotificationInfo.Context.Id = entityId
 			userNotificationInfo.Context.Type = entityType
 		}
@@ -408,7 +412,9 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 		action = actions[actionLookUpTable[userNotificationInfo.Operation+"_"+userNotificationInfo.Status]]
 	} else if userNotificationInfo.Operation == "MODEL_EXPORT" || userNotificationInfo.Operation == "ENTITY_EXPORT" {
 		action = actions[actionLookUpTable[userNotificationInfo.Operation+"_"+userNotificationInfo.Status+"_"+strconv.FormatBool(userNotificationInfo.EmulatedSyncDownload)]]
-	} else if userNotificationInfo.ServiceName == "configurationmanageservice" && userNotificationInfo.Context.Type == "uiconfig" {
+	}
+
+	if userNotificationInfo.ServiceName == "configurationmanageservice" && userNotificationInfo.Context.Type == "uiconfig" {
 		if userNotificationInfo.Operation == "" {
 			action = actions[actionLookUpTable[userNotificationInfo.ServiceName+"_"+userNotificationInfo.Context.Type+"_"+userNotificationInfo.Status]]
 		}
@@ -427,6 +433,7 @@ func prepareNotificationObject(userNotificationInfo *UserNotificationInfo, notif
 	} else if userNotificationInfo.ServiceName == "notificationmanageservice" {
 		action = actions[actionLookUpTable[userNotificationInfo.ServiceName+"_"+userNotificationInfo.TaskType+"_"+userNotificationInfo.Status]]
 	}
+
 	if val, ok := dataIndexMapping[userNotificationInfo.ServiceName]; ok {
 		dataIndex = val
 	}

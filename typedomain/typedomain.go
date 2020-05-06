@@ -315,9 +315,11 @@ func GetDomainForEntityType(entityType string) (string, error) {
 				if json.Unmarshal(body, &response) != nil {
 					return "", err
 				}
-				lookUpValue = response.Response.EntityModels[0].Domain
-				if lookUpValue == "" {
-					return "", errors.New("doamin not found")
+				if len(response.Response.EntityModels) > 0 {
+					lookUpValue = response.Response.EntityModels[0].Domain
+					if lookUpValue == "" {
+						return "", errors.New("doamin not found for entityType" + entityType)
+					}
 				}
 			}
 			defer resp.Body.Close()
