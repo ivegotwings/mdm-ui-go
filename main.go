@@ -15,6 +15,7 @@ import (
 	"github.com/ivegotwings/mdm-ui-go/moduleversion"
 	"github.com/ivegotwings/mdm-ui-go/notification"
 	"github.com/ivegotwings/mdm-ui-go/state"
+	"github.com/ivegotwings/mdm-ui-go/typedomain"
 	"github.com/ivegotwings/mdm-ui-go/utils"
 )
 
@@ -81,6 +82,7 @@ func main() {
 	utils.PrintInfo("Redis Config: " + string(b))
 	//pre load the map once
 	moduleversion.LoadDomainMap()
+	typedomain.InitializeEntityTypeDomainMap()
 
 	opts := make(map[string]string)
 	opts["host"] = config.Redis.Host
