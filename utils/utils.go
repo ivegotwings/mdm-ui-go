@@ -10,7 +10,7 @@ import (
 
 type SocketWithLock struct {
 	Socket *socketio.Conn
-	Lock   *sync.Mutex
+	sync.RWMutex
 }
 
 func Contains(arr []string, str string) bool {

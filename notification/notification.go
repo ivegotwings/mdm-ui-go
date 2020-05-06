@@ -1,7 +1,6 @@
 package notification
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -248,9 +247,6 @@ func (notificationHandler *NotificationHandler) Notify(w http.ResponseWriter, r 
 			}
 			}`), &response)
 	if err == nil {
-		executionContext := executioncontext.GetContext(r)
-		ctx := r.Context()
-		go processNotification(body, executionContext, ctx)
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Server", "mdm-ui-go-notification")
 		json.NewEncoder(w).Encode(response)
@@ -260,13 +256,16 @@ func (notificationHandler *NotificationHandler) Notify(w http.ResponseWriter, r 
 		w.Header().Set("Server", "mdm-ui-go-notification")
 		w.WriteHeader(http.StatusOK)
 	}
+	executionContext := executioncontext.GetContext(r)
+	go processNotification(body, executionContext)
 }
 
-func processNotification(body []byte, context executioncontext.Context, ctx context.Context) error {
-	span, ctx := apm.StartSpan(ctx, "goroutine:processNotification", "goroutine")
+func processNotification(body []byte, context executioncontext.Context) error {
+	tx := apm.DefaultTracer.StartTransaction("goroutine:processNotification", "goroutine")
+	defer tx.End()
 	var _message Notification
 	err := json.Unmarshal(body, &_message)
-	defer span.End()
+	// defer span.End()
 	if err != nil {
 		utils.PrintInfo("notify error in processing body: " + err.Error())
 		return err
@@ -283,7 +282,7 @@ func processNotification(body []byte, context executioncontext.Context, ctx cont
 				if ok := utils.Contains(clientIdNotificationExlusionList, clientId); ok {
 					utils.PrintInfo("Ignoring notification for clientId: " + clientId)
 				}
-				sendNotification(_message.NotificationObject, tenantId, context)
+				go sendNotification(_message.NotificationObject, tenantId, context)
 			} else {
 				err = errors.New("Notify- missing clientId")
 				return err
@@ -297,6 +296,8 @@ func processNotification(body []byte, context executioncontext.Context, ctx cont
 }
 
 func sendNotification(notificationObject NotificationObject, tenantId string, context executioncontext.Context) error {
+	tx := apm.DefaultTracer.StartTransaction("goroutine:sendNotification", "goroutine")
+	defer tx.End()
 	var userNotificationInfo UserNotificationInfo
 	err := prepareNotificationObject(&userNotificationInfo, notificationObject)
 	if err != nil {
@@ -458,6 +459,7 @@ func NotificationScheduler(quit chan struct{}) {
 	for {
 		select {
 		case payload := <-NotificationPayloadChannel:
+			tx := apm.DefaultTracer.StartTransaction("goroutine:socketpayload", "goroutine")
 			var uniqueVersionKeys = map[string]string{}
 			if uniqueVersionKeys[payload.VersionKey] != "done" {
 				uniqueVersionKeys[payload.VersionKey] = "done"
@@ -487,6 +489,7 @@ func NotificationScheduler(quit chan struct{}) {
 				room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"]
 				redisBroadCastAdaptor.Send(nil, room, "event:notification", payload.UserNotificationInfo)
 			}
+			tx.End()
 		case <-quit:
 			return
 		}

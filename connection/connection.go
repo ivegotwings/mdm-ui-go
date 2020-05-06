@@ -1,8 +1,6 @@
 package connection
 
 import (
-	"sync"
-
 	"github.com/ivegotwings/mdm-ui-go/cmap_string_socket"
 	"github.com/ivegotwings/mdm-ui-go/utils"
 
@@ -153,7 +151,6 @@ func (b Broadcast) Join(room string, socket socketio.Conn) error {
 	}
 	_socket := utils.SocketWithLock{
 		Socket: &socket,
-		Lock:   &sync.Mutex{},
 	}
 	s := *_socket.Socket
 	s.Join(room)
@@ -163,7 +160,7 @@ func (b Broadcast) Join(room string, socket socketio.Conn) error {
 	return nil
 }
 
-func (b Broadcast) Leave(room string, _socket utils.SocketWithLock) error {
+func (b Broadcast) Leave(room string, _socket *utils.SocketWithLock) error {
 	sockets, ok := b.rooms.Get(room)
 	if !ok {
 		return nil
@@ -211,9 +208,9 @@ func (b Broadcast) SendSocket(ignore socketio.Conn, room, message string, args .
 
 			go func() {
 				s := *_socket.Socket
-				_socket.Lock.Lock()
+				_socket.Lock()
 				s.Emit(message, args...)
-				defer _socket.Lock.Unlock()
+				defer _socket.Unlock()
 				defer func() {
 					if err := recover(); err != nil {
 						utils.Println("panic", "", "connection.go", "", "panic: "+err.(string), "", nil)
