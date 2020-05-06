@@ -139,9 +139,7 @@ func main() {
 
 	http.Handle("/socket.io/", server)
 	http.Handle("/", http.HandlerFunc(baseRouter))
-	notificationHandler := notification.NotificationHandler{
-		RedisBroadCastAdaptor: redisBroadCastAdaptor,
-	}
+	notificationHandler := notification.NotificationHandler{}
 	http.Handle("/api/notify", http.HandlerFunc(notificationHandler.Notify))
 	client := &http.Server{
 		ReadTimeout:  6 * time.Second,

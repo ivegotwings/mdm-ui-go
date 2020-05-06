@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 var entityTypeDomainLookUp = map[string]string{
@@ -276,7 +277,7 @@ type TypeDomainResponse struct {
 //  }
 
 func GetDomainForEntityType(entityType string) (string, error) {
-	lookUpValue := "" //entityTypeDomainLookUp[entityType+"_entityType"]
+	lookUpValue := entityTypeDomainLookUp[entityType+"_entityType"]
 	if lookUpValue == "" {
 		//post call
 		var requestBody []byte = []byte(`{"params":{"query":{"ids":["` + entityType + `_entityType"],"filters":{"typesCriterion":["entityType"]}},"fields": {"attributes": ["_ALL"],"relationships": ["_ALL"]}}}`)
@@ -299,7 +300,9 @@ func GetDomainForEntityType(entityType string) (string, error) {
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("x-rdp-authtoken", "m4eZW93FLaUAUfoR1vYEEfwTXr1wdbedZNss0aId6CQ=")
 
-			client := &http.Client{}
+			client := &http.Client{
+				Timeout: 30 * time.Second,
+			}
 			resp, err := client.Do(req)
 			if err != nil {
 				return "", err

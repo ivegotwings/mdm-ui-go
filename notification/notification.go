@@ -208,7 +208,6 @@ var clientIdNotificationExlusionList = []string{"healthcheckClient"}
 var redisBroadCastAdaptor *connection.Broadcast
 
 type NotificationHandler struct {
-	RedisBroadCastAdaptor connection.Broadcast
 }
 
 type NotificationPayload struct {
@@ -227,17 +226,24 @@ func SetRedisBroadCastAdaptor(adaptor *connection.Broadcast) {
 }
 
 func (notificationHandler *NotificationHandler) Notify(w http.ResponseWriter, r *http.Request) {
+	var body []byte
+	var bodyerr error
 	if r.Method == "POST" {
-		go processNotification(w, r, notificationHandler)
+		body, bodyerr = ioutil.ReadAll(r.Body)
+		if bodyerr != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
 	} else {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
 	}
 	var response interface{}
 	err := json.Unmarshal([]byte(`{
-		"dataObjectOperationResponse": {
-			"status": "success"
-		}
-		}`), &response)
+			"dataObjectOperationResponse": {
+				"status": "success"
+			}
+			}`), &response)
 	if err == nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Server", "mdm-ui-go-notification")
@@ -248,20 +254,14 @@ func (notificationHandler *NotificationHandler) Notify(w http.ResponseWriter, r 
 		w.Header().Set("Server", "mdm-ui-go-notification")
 		w.WriteHeader(http.StatusOK)
 	}
-
+	go processNotification(body)
 }
 
-func processNotification(w http.ResponseWriter, r *http.Request, notificationHandler *NotificationHandler) error {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Error reading request body",
-			http.StatusInternalServerError)
-	}
+func processNotification(body []byte) error {
 	var _message Notification
-	err = json.Unmarshal(body, &_message)
+	err := json.Unmarshal(body, &_message)
 	if err != nil {
 		utils.PrintInfo("notify error in processing body: " + err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	} else {
 		utils.PrintDebug("NotificationObject- %v\n", _message.NotificationObject)
