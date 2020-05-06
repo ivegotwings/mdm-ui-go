@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -336,7 +335,7 @@ func InitializeEntityTypeDomainMap(context executioncontext.Context) (map[string
 		}
 		defer resp.Body.Close()
 	}
-	fmt.Println("init response ", entityTypeDomainLookUp)
+	utils.PrintDebug("inittypedomaintenantmap response %+v\n", entityTypeDomainLookUp)
 	return entityTypeDomainLookUp, nil
 }
 
@@ -393,7 +392,7 @@ func GetDomainForEntityType(entityType string, context executioncontext.Context)
 				if json.Unmarshal(body, &response) != nil {
 					return "", err
 				}
-				fmt.Println("response Get ", response)
+				utils.PrintDebug("gettypedomainmap response Get %+v\n", response)
 				if response.Response.Status != "success" {
 					return "", errors.New("gettypedomainmap- failed to make model get call")
 				}
@@ -408,6 +407,6 @@ func GetDomainForEntityType(entityType string, context executioncontext.Context)
 			defer resp.Body.Close()
 		}
 	}
-	fmt.Println("lookup ", lookUpValue)
+	utils.PrintDebug("lookupValue domain for entitytype %s %s", entityType+"_entityType", lookUpValue)
 	return lookUpValue, nil
 }
