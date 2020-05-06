@@ -277,22 +277,22 @@ type EntityModel struct {
 
 type TypeDomainResponseBody struct {
 	EntityModels []EntityModel `json:"entityModels"`
+	Status       string
 }
 
 type TypeDomainResponse struct {
 	Response TypeDomainResponseBody `json:"response"`
 }
 
-var tenantTypeDomainMap map[string]map[string]string
+var tenantTypeDomainMap map[string]map[string]string = make(map[string]map[string]string)
 
 func InitializeEntityTypeDomainMap(context executioncontext.Context) (map[string]string, error) {
 	var requestBody []byte = []byte(`{"params":{"query":{"filters":{"typesCriterion":["entityType"]}},"fields": {"attributes": ["_ALL"],"relationships": ["_ALL"]}}}`)
-	var entityTypeDomainLookUp map[string]string
-	req, err := http.NewRequest("POST", "http://manage.engg-az-dev2.riversand-dataplatform.com:8085/rdwengg-az-dev2/api/entitymodelservice/get", bytes.NewBuffer(requestBody))
+	entityTypeDomainLookUp := make(map[string]string)
+	req, err := http.NewRequest("POST", "http://"+context.Host+"/"+context.TenantId+"/api/entitymodelservice/get", bytes.NewBuffer(requestBody))
 	if err != nil {
 		return nil, err
 	} else {
-		fmt.Println("00")
 		req.Header.Set("x-rdp-tenantId", context.TenantId)
 		req.Header.Set("x-rdp-userId", context.UserId)
 		req.Header.Set("x-rdp-userRoles", context.UserRoles)
@@ -315,7 +315,6 @@ func InitializeEntityTypeDomainMap(context executioncontext.Context) (map[string
 			return nil, err
 		} else {
 			body, err := ioutil.ReadAll(resp.Body)
-			fmt.Println("init bytes ", body)
 			if err != nil {
 				return nil, err
 			}
@@ -323,7 +322,9 @@ func InitializeEntityTypeDomainMap(context executioncontext.Context) (map[string
 			if json.Unmarshal(body, &response) != nil {
 				return nil, err
 			}
-			fmt.Println("response Init ", response)
+			if response.Response.Status != "success" {
+				return nil, errors.New("inittypedomainmap- failed to make model get call")
+			}
 			if len(response.Response.EntityModels) > 0 {
 				for _, entityModel := range response.Response.EntityModels {
 					entityTypeDomainLookUp[entityModel.Id] = entityModel.Domain
@@ -335,11 +336,12 @@ func InitializeEntityTypeDomainMap(context executioncontext.Context) (map[string
 		}
 		defer resp.Body.Close()
 	}
+	fmt.Println("init response ", entityTypeDomainLookUp)
 	return entityTypeDomainLookUp, nil
 }
 
 func GetDomainForEntityType(entityType string, context executioncontext.Context) (string, error) {
-	fmt.Printf("%+v\n", context)
+	utils.PrintDebug("Execution Context %+v\n", context)
 	var lookUpValue string
 	if entityTypeDomainLookUp, ok := tenantTypeDomainMap[context.TenantId]; ok {
 		lookUpValue = entityTypeDomainLookUp[entityType+"_entityType"]
@@ -348,12 +350,9 @@ func GetDomainForEntityType(entityType string, context executioncontext.Context)
 		typedomainmap, err := InitializeEntityTypeDomainMap(context)
 		if err == nil {
 			tenantTypeDomainMap[context.TenantId] = typedomainmap
-		} else {
-			fmt.Println(err)
-			if entityTypeDomainLookUp, ok := tenantTypeDomainMap[context.TenantId]; ok {
-				lookUpValue = entityTypeDomainLookUp[entityType+"_entityType"]
-				utils.PrintDebug("Type domain map for tenant "+context.TenantId+" %+v\n", typedomainmap)
-			}
+			utils.PrintDebug("TenantTypeDomain %+v\n", tenantTypeDomainMap)
+			utils.PrintDebug("Type domain map for tenant "+context.TenantId+" %+v\n", typedomainmap)
+			lookUpValue = typedomainmap[entityType+"_entityType"]
 		}
 	}
 	if lookUpValue == "" {
@@ -361,7 +360,7 @@ func GetDomainForEntityType(entityType string, context executioncontext.Context)
 		utils.PrintDebug("No type domain lookup value found for entityType " + entityType + "_entityType")
 
 		var requestBody []byte = []byte(`{"params":{"query":{"ids":["` + entityType + `_entityType"],"filters":{"typesCriterion":["entityType"]}},"fields": {"attributes": ["_ALL"],"relationships": ["_ALL"]}}}`)
-		req, err := http.NewRequest("POST", "http://manage.engg-az-dev2.riversand-dataplatform.com:8085/rdwengg-az-dev2/api/entitymodelservice/get", bytes.NewBuffer(requestBody))
+		req, err := http.NewRequest("POST", "http://"+context.Host+"/"+context.TenantId+"/api/entitymodelservice/get", bytes.NewBuffer(requestBody))
 		if err != nil {
 			return "", err
 		} else {
@@ -395,6 +394,9 @@ func GetDomainForEntityType(entityType string, context executioncontext.Context)
 					return "", err
 				}
 				fmt.Println("response Get ", response)
+				if response.Response.Status != "success" {
+					return "", errors.New("gettypedomainmap- failed to make model get call")
+				}
 				if len(response.Response.EntityModels) > 0 {
 					lookUpValue = response.Response.EntityModels[0].Domain
 					utils.PrintDebug("domain for entityType "+entityType+"_entityType"+" %s", lookUpValue)
