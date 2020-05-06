@@ -2,6 +2,7 @@ package executioncontext
 
 import (
 	"net/http"
+	"os"
 )
 
 type Context struct {
@@ -19,6 +20,7 @@ type Context struct {
 	UserRoles         string
 	DefaultRole       string
 	Referer           string
+	Host              string
 }
 
 // 'clientAuthKey': clientAuthKey ? clientAuthKey : "",
@@ -50,7 +52,11 @@ func GetContext(req *http.Request) Context {
 		OwnershipEditData: req.Header.Get("x-rdp-ownershipeditdata"),
 		ClientId:          "rufClient",
 		ClientAuthKey:     "3218fa37-f809-4be4-b88e-653419b20e28",
-		Referer:           req.Header.Get("referer"),
+		Host:              "rdp-rest:7075",
+	}
+
+	if os.Getenv("ENV") == "DEVELOPMENT" {
+		UserContext.Host = "manage.engg-az-dev2.riversand-dataplatform.com:7075"
 	}
 	return UserContext
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/ivegotwings/mdm-ui-go/connection"
+	"github.com/ivegotwings/mdm-ui-go/executioncontext"
 	"github.com/ivegotwings/mdm-ui-go/moduleversion"
 	"github.com/ivegotwings/mdm-ui-go/state"
 	"github.com/ivegotwings/mdm-ui-go/typedomain"
@@ -244,6 +245,7 @@ func (notificationHandler *NotificationHandler) Notify(w http.ResponseWriter, r 
 				"status": "success"
 			}
 			}`), &response)
+	context := executioncontext.GetContext(r)
 	if err == nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Server", "mdm-ui-go-notification")
@@ -254,10 +256,10 @@ func (notificationHandler *NotificationHandler) Notify(w http.ResponseWriter, r 
 		w.Header().Set("Server", "mdm-ui-go-notification")
 		w.WriteHeader(http.StatusOK)
 	}
-	go processNotification(body)
+	go processNotification(body, context)
 }
 
-func processNotification(body []byte) error {
+func processNotification(body []byte, context executioncontext.Context) error {
 	var _message Notification
 	err := json.Unmarshal(body, &_message)
 	if err != nil {
@@ -276,7 +278,7 @@ func processNotification(body []byte) error {
 				if ok := utils.Contains(clientIdNotificationExlusionList, clientId); ok {
 					utils.PrintInfo("Ignoring notification for clientId: " + clientId)
 				}
-				go sendNotification(_message.NotificationObject, tenantId)
+				go sendNotification(_message.NotificationObject, tenantId, context)
 			} else {
 				err = errors.New("Notify- missing clientId")
 				return err
@@ -289,7 +291,7 @@ func processNotification(body []byte) error {
 	return nil
 }
 
-func sendNotification(notificationObject NotificationObject, tenantId string) error {
+func sendNotification(notificationObject NotificationObject, tenantId string, context executioncontext.Context) error {
 	var userNotificationInfo UserNotificationInfo
 	err := prepareNotificationObject(&userNotificationInfo, notificationObject)
 	if err != nil {
@@ -317,7 +319,10 @@ func sendNotification(notificationObject NotificationObject, tenantId string) er
 			}
 			//NotificaitonPayloadQueue.Payload
 		} else {
-			typeDomain, err := typedomain.GetDomainForEntityType(userNotificationInfo.Context.Type)
+			context.UserId = userInfo["userId"]
+			context.TenantId = userInfo["tenantId"]
+
+			typeDomain, err := typedomain.GetDomainForEntityType(userNotificationInfo.Context.Type, context)
 			if err != nil {
 				return err
 			}
