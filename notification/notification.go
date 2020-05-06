@@ -232,9 +232,22 @@ func (notificationHandler *NotificationHandler) Notify(w http.ResponseWriter, r 
 	} else {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 	}
-	fmt.Fprint(w, "done")
-	w.Header().Set("Server", "A Go Web Server")
-	w.WriteHeader(200)
+	var response interface{}
+	err := json.Unmarshal([]byte(`{
+		"dataObjectOperationResponse": {
+			"status": "success"
+		}
+		}`), &response)
+	if err == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Server", "mdm-ui-go-notification")
+		json.NewEncoder(w).Encode(response)
+		w.WriteHeader(http.StatusOK)
+	} else {
+		fmt.Fprint(w, "Notification processsed but problem sending success status")
+		w.Header().Set("Server", "mdm-ui-go-notification")
+		w.WriteHeader(http.StatusOK)
+	}
 
 }
 
