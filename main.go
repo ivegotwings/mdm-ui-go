@@ -59,7 +59,7 @@ func main() {
 	log.SetOutput(f)
 	runtime.GOMAXPROCS(4)
 
-	// Create PM2 connector
+	//Create PM2 connector
 	//pm2 link sf7mwo5yxfdawcm xauiz97m6zsza77
 	// pm2 := pm2io.Pm2Io{
 	// 	Config: &structures.Config{

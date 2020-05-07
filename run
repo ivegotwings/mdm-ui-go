@@ -1,5 +1,5 @@
 #!/bin/bash
 echo "setting up env"
-source .env
+source .env_development
 echo "start mdm-ui-go-notification"
 go run main.go
