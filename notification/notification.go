@@ -281,7 +281,7 @@ func processNotification(body []byte, context executioncontext.Context) error {
 				if ok := utils.Contains(clientIdNotificationExlusionList, clientId); ok {
 					utils.PrintInfo("Ignoring notification for clientId: " + clientId)
 				}
-				sendNotification(_message.NotificationObject, tenantId, context, tx )
+				sendNotification(_message.NotificationObject, tenantId, context, tx)
 			} else {
 				err = errors.New("Notify- missing clientId")
 				return err
@@ -295,7 +295,6 @@ func processNotification(body []byte, context executioncontext.Context) error {
 }
 
 func sendNotification(notificationObject NotificationObject, tenantId string, context executioncontext.Context, tx *apm.Transaction) error {
-	defer tx.End()
 	var userNotificationInfo UserNotificationInfo
 	span := tx.StartSpan("preparenotificationobject", "function", nil)
 	err := prepareNotificationObject(&userNotificationInfo, notificationObject)
@@ -350,6 +349,7 @@ func sendNotification(notificationObject NotificationObject, tenantId string, co
 			}
 		}
 	}
+	tx.End()
 	return nil
 }
 
@@ -465,6 +465,7 @@ func NotificationScheduler(quit chan struct{}) {
 		select {
 		case payload := <-NotificationPayloadChannel:
 			tx := apm.DefaultTracer.StartTransaction("goroutine:socketpayload", "goroutine")
+			span := tx.StartSpan("versionkey update", "function", nil)
 			var uniqueVersionKeys = map[string]string{}
 			if uniqueVersionKeys[payload.VersionKey] != "done" {
 				uniqueVersionKeys[payload.VersionKey] = "done"
@@ -485,6 +486,8 @@ func NotificationScheduler(quit chan struct{}) {
 					conn.Flush()
 				}
 			}
+			span.End()
+			_span := tx.StartSpan("socket.io", "function", nil)
 			var room string
 			if payload.UserInfo["tenantId"] != "" && payload.UserInfo["userId"] != "" {
 				room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"] + "_user_" + payload.UserInfo["userId"]
@@ -494,6 +497,7 @@ func NotificationScheduler(quit chan struct{}) {
 				room = "socket_conn_room_tenant_" + payload.UserInfo["tenantId"]
 				redisBroadCastAdaptor.Send(nil, room, "event:notification", payload.UserNotificationInfo)
 			}
+			_span.End()
 			tx.End()
 		case <-quit:
 			return

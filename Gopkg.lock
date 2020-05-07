@@ -45,7 +45,8 @@
   version = "v1.6.0"
 
 [[projects]]
-  digest = "1:6973c2e8119789f8600a3eb9af765c57ea27824f1789198597d701c01abbc013"
+  branch = "master"
+  digest = "1:3e5d89cb8675ac9a98be28e634d9be7f604b8396197302501724f3b3f39a6936"
   name = "github.com/googollee/go-engine.io"
   packages = [
     ".",
@@ -57,8 +58,7 @@
     "transport/websocket",
   ]
   pruneopts = "UT"
-  revision = "d1cac332336664ac940c0db96d83e9b181cd335c"
-  version = "v1.4.2"
+  revision = "d38973698d3378fd1cf8c996a69dcdbccff54955"
 
 [[projects]]
   branch = "master"

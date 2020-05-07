@@ -37,6 +37,10 @@
   branch = "master"
   name = "github.com/googollee/go-socket.io"
 
+[[override]]
+  branch = "master"
+  name = "github.com/googollee/go-engine.io"
+
 [[constraint]]
   branch = "master"
   name = "github.com/nu7hatch/gouuid"
