@@ -340,6 +340,7 @@ func InitializeEntityTypeDomainMap(context executioncontext.Context) (map[string
 }
 
 func GetDomainForEntityType(entityType string, context executioncontext.Context) (string, error) {
+	//return "thing", nil
 	utils.PrintDebug("Execution Context %+v\n", context)
 	var lookUpValue string
 	if entityTypeDomainLookUp, ok := tenantTypeDomainMap[context.TenantId]; ok {
