@@ -42,7 +42,7 @@ func GetContext(req *http.Request) Context {
 	UserContext := Context{
 		UserId:            req.Header.Get("x-rdp-userid"),
 		TenantId:          req.Header.Get("x-rdp-tenantid"),
-		UserRoles:         req.Header.Get("x-rdp-userroles"),
+		UserRoles:         "[\"\"]",
 		DefaultRole:       req.Header.Get("x-rdp-defaultrole"),
 		UserName:          req.Header.Get("x-rdp-username"),
 		UserEmail:         req.Header.Get("x-rdp-useremail"),
