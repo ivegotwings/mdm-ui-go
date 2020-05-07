@@ -106,6 +106,12 @@ func main() {
 
 		return nil
 	})
+
+	server.OnDisconnect("", func(so socketio.Conn, reason string) {
+		utils.PrintDebug("disconnected socket reason- %s", reason)
+
+	})
+
 	server.OnError("error", func(so socketio.Conn, err error) {
 		utils.PrintInfo("error: " + err.Error())
 	})
@@ -128,7 +134,7 @@ func main() {
 					utils.PrintInfo("Redis BroadCastManager- Failure to connect: " + err.Error())
 				} else {
 					utils.PrintInfo("adding new user to rooms: " + user_room + tenant_room)
-					so.Emit("event:message", _userInfo)
+					redisBroadCastAdaptor.Send(nil, user_room, "event:message", _userInfo)
 				}
 			}
 		}

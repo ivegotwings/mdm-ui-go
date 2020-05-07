@@ -1,6 +1,8 @@
 package connection
 
 import (
+	"errors"
+
 	"github.com/ivegotwings/mdm-ui-go/cmap_string_socket"
 	"github.com/ivegotwings/mdm-ui-go/utils"
 
@@ -160,18 +162,24 @@ func (b Broadcast) Join(room string, socket socketio.Conn) error {
 	return nil
 }
 
-func (b Broadcast) Leave(room string, _socket *utils.SocketWithLock) error {
+func (b Broadcast) Leave(room string, socket socketio.Conn) error {
 	sockets, ok := b.rooms.Get(room)
 	if !ok {
-		return nil
+		return errors.New("Socket not found in room " + room)
 	}
-	socket := *_socket.Socket
+	var _socket *utils.SocketWithLock
+	_socket, ok = sockets.Get(socket.ID())
+	if !ok {
+		return errors.New("Socket parent not found for socket id " + socket.ID())
+	}
+	_socket.Lock()
 	sockets.Remove(socket.ID())
 	if sockets.IsEmpty() {
 		b.rooms.Remove(room)
 		return nil
 	}
 	b.rooms.Set(room, sockets)
+	_socket.Unlock()
 	return nil
 }
 
