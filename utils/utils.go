@@ -6,12 +6,15 @@ import (
 	"sync"
 
 	socketio "github.com/googollee/go-socket.io"
+	"github.com/ivegotwings/mdm-ui-go/executioncontext"
 )
 
 type SocketWithLock struct {
 	Socket *socketio.Conn
 	sync.RWMutex
 }
+
+var ctx executioncontext.Context
 
 func Contains(arr []string, str string) bool {
 	for _, a := range arr {
@@ -24,7 +27,7 @@ func Contains(arr []string, str string) bool {
 
 func PrintDebug(format string, messagef ...interface{}) {
 	if os.Getenv("LOG_LEVEL") == "DEBUG" {
-		Println("debug", "", "", "", "", format, messagef...)
+		Println("debug", "", "", format, messagef...)
 	}
 }
 
@@ -33,11 +36,17 @@ func PrintInfo(message string) {
 	Println("info", "", "", "", message, "%s", v)
 }
 
-func Println(loglevel string, tenantId string, calleeServiceName string, userId string, message string, format string, messagef ...interface{}) {
+func SetExecutionContext(context executioncontext.Context) {
+	ctx = context
+}
+
+func Println(loglevel string, calleeServiceName string, message string, format string, messagef ...interface{}) {
 	// "requestId", "guid", "tenantId", "callerServiceName", "calleeServiceName",
 	// "relatedRequestId", "groupRequestId", "taskId", "userId", "entityId",
 	// "objectType", "className", "method", "newTimestamp", "action",
 	// "inclusiveTime", "messageCode", "instanceId", "logMessage"
+	tenantId := ctx.TenantId
+	userId := ctx.UserId
 	var messageTemplate string = `[` + loglevel + `] [] [] [` + tenantId + `] [Go-Notification] [` + calleeServiceName + `] [] [] [] [` + userId + `] [] [] [] [] [] [] [] [] [] [` + message + `]`
 	switch loglevel {
 	case "panic":
