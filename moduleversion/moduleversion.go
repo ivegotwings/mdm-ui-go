@@ -28,7 +28,7 @@ func GetVersionKey(module string, domain string, tenantId string) (string, error
 	if domain == "" {
 		resolvedDomain = "default"
 	} else {
-		resolvedDomain, err = GetResolvedDomain(module, domain, tenantId)
+		resolvedDomain, err = GetResolvedDomain(module, domain)
 		if err != nil {
 			return "", errors.New("UpdateModuleVersion- cannot resolve domain")
 		}
@@ -37,7 +37,7 @@ func GetVersionKey(module string, domain string, tenantId string) (string, error
 	return versionKey, nil
 }
 
-func GetResolvedDomain(module string, domain string, tenantId string) (string, error) {
+func GetResolvedDomain(module string, domain string) (string, error) {
 	if module == "" {
 		return "", errors.New("GetVersion- no module provided")
 	}
@@ -83,3 +83,4 @@ func LoadDomainMap() {
 func GetModuleDomainMap() ModuleDomainMap {
 	return moduleDomainMap
 }
+
