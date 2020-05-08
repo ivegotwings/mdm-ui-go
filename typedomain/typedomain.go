@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/ivegotwings/mdm-ui-go/executioncontext"
@@ -340,72 +341,76 @@ func InitializeEntityTypeDomainMap(context executioncontext.Context) (map[string
 }
 
 func GetDomainForEntityType(entityType string, context executioncontext.Context) (string, error) {
-	//return "thing", nil
-	utils.PrintDebug("Execution Context %+v\n", context)
 	var lookUpValue string
-	if entityTypeDomainLookUp, ok := tenantTypeDomainMap[context.TenantId]; ok {
-		lookUpValue = entityTypeDomainLookUp[entityType+"_entityType"]
+	if os.Getenv("USER") == "sudo" {
+		return "thing", nil
 	} else {
-		//we don't have the type-domain map for this tenant
-		typedomainmap, err := InitializeEntityTypeDomainMap(context)
-		if err == nil {
-			tenantTypeDomainMap[context.TenantId] = typedomainmap
-			utils.PrintDebug("TenantTypeDomain %+v\n", tenantTypeDomainMap)
-			utils.PrintDebug("Type domain map for tenant "+context.TenantId+" %+v\n", typedomainmap)
-			lookUpValue = typedomainmap[entityType+"_entityType"]
-		}
-	}
-	if lookUpValue == "" {
-		//post call
-		utils.PrintDebug("No type domain lookup value found for entityType " + entityType + "_entityType")
 
-		var requestBody []byte = []byte(`{"params":{"query":{"ids":["` + entityType + `_entityType"],"filters":{"typesCriterion":["entityType"]}},"fields": {"attributes": ["_ALL"],"relationships": ["_ALL"]}}}`)
-		req, err := http.NewRequest("POST", "http://"+context.Host+"/"+context.TenantId+"/api/entitymodelservice/get", bytes.NewBuffer(requestBody))
-		if err != nil {
-			return "", err
+		utils.PrintDebug("Execution Context %+v\n", context)
+		if entityTypeDomainLookUp, ok := tenantTypeDomainMap[context.TenantId]; ok {
+			lookUpValue = entityTypeDomainLookUp[entityType+"_entityType"]
 		} else {
-			req.Header.Set("x-rdp-tenantId", context.TenantId)
-			req.Header.Set("x-rdp-userId", context.UserId)
-			req.Header.Set("x-rdp-userRoles", context.UserRoles)
-			req.Header.Set("x-rdp-useremail", context.UserEmail)
-			req.Header.Set("x-rdp-defaultrole", context.DefaultRole)
-			req.Header.Set("x-rdp-clientid", context.ClientId)
-			req.Header.Set("x-rdp-ownershipdata", context.OwnershipData)
-			req.Header.Set("x-rdp-ownershipeditdata", context.OwnershipEditData)
-			req.Header.Set("x-rdp-useremail", context.UserEmail)
-			req.Header.Set("x-rdp-firstName", context.FirstName)
-			req.Header.Set("x-rdp-lastName", context.LastName)
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("x-rdp-authtoken", "m4eZW93FLaUAUfoR1vYEEfwTXr1wdbedZNss0aId6CQ=")
-
-			client := &http.Client{
-				Timeout: 30 * time.Second,
+			//we don't have the type-domain map for this tenant
+			typedomainmap, err := InitializeEntityTypeDomainMap(context)
+			if err == nil {
+				tenantTypeDomainMap[context.TenantId] = typedomainmap
+				utils.PrintDebug("TenantTypeDomain %+v\n", tenantTypeDomainMap)
+				utils.PrintDebug("Type domain map for tenant "+context.TenantId+" %+v\n", typedomainmap)
+				lookUpValue = typedomainmap[entityType+"_entityType"]
 			}
-			resp, err := client.Do(req)
+		}
+		if lookUpValue == "" {
+			//post call
+			utils.PrintDebug("No type domain lookup value found for entityType " + entityType + "_entityType")
+
+			var requestBody []byte = []byte(`{"params":{"query":{"ids":["` + entityType + `_entityType"],"filters":{"typesCriterion":["entityType"]}},"fields": {"attributes": ["_ALL"],"relationships": ["_ALL"]}}}`)
+			req, err := http.NewRequest("POST", "http://"+context.Host+"/"+context.TenantId+"/api/entitymodelservice/get", bytes.NewBuffer(requestBody))
 			if err != nil {
 				return "", err
 			} else {
-				body, err := ioutil.ReadAll(resp.Body)
+				req.Header.Set("x-rdp-tenantId", context.TenantId)
+				req.Header.Set("x-rdp-userId", context.UserId)
+				req.Header.Set("x-rdp-userRoles", context.UserRoles)
+				req.Header.Set("x-rdp-useremail", context.UserEmail)
+				req.Header.Set("x-rdp-defaultrole", context.DefaultRole)
+				req.Header.Set("x-rdp-clientid", context.ClientId)
+				req.Header.Set("x-rdp-ownershipdata", context.OwnershipData)
+				req.Header.Set("x-rdp-ownershipeditdata", context.OwnershipEditData)
+				req.Header.Set("x-rdp-useremail", context.UserEmail)
+				req.Header.Set("x-rdp-firstName", context.FirstName)
+				req.Header.Set("x-rdp-lastName", context.LastName)
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("x-rdp-authtoken", "m4eZW93FLaUAUfoR1vYEEfwTXr1wdbedZNss0aId6CQ=")
+
+				client := &http.Client{
+					Timeout: 30 * time.Second,
+				}
+				resp, err := client.Do(req)
 				if err != nil {
 					return "", err
-				}
-				var response TypeDomainResponse
-				if json.Unmarshal(body, &response) != nil {
-					return "", err
-				}
-				utils.PrintDebug("gettypedomainmap response Get %+v\n", response)
-				if response.Response.Status != "success" {
-					return "", errors.New("gettypedomainmap- failed to make model get call")
-				}
-				if len(response.Response.EntityModels) > 0 {
-					lookUpValue = response.Response.EntityModels[0].Domain
-					utils.PrintDebug("domain for entityType "+entityType+"_entityType"+" %s", lookUpValue)
-					if lookUpValue == "" {
-						return "", errors.New("doamin not found for entityType" + entityType)
+				} else {
+					body, err := ioutil.ReadAll(resp.Body)
+					if err != nil {
+						return "", err
+					}
+					var response TypeDomainResponse
+					if json.Unmarshal(body, &response) != nil {
+						return "", err
+					}
+					utils.PrintDebug("gettypedomainmap response Get %+v\n", response)
+					if response.Response.Status != "success" {
+						return "", errors.New("gettypedomainmap- failed to make model get call")
+					}
+					if len(response.Response.EntityModels) > 0 {
+						lookUpValue = response.Response.EntityModels[0].Domain
+						utils.PrintDebug("domain for entityType "+entityType+"_entityType"+" %s", lookUpValue)
+						if lookUpValue == "" {
+							return "", errors.New("doamin not found for entityType" + entityType)
+						}
 					}
 				}
+				defer resp.Body.Close()
 			}
-			defer resp.Body.Close()
 		}
 	}
 	utils.PrintDebug("lookupValue domain for entitytype %s %s", entityType+"_entityType", lookUpValue)
