@@ -52,11 +52,9 @@ func GetContext(req *http.Request) Context {
 		OwnershipEditData: req.Header.Get("x-rdp-ownershipeditdata"),
 		ClientId:          "rufClient",
 		ClientAuthKey:     "3218fa37-f809-4be4-b88e-653419b20e28",
-		Host:              "rdp-rest:7075",
 	}
 
-	if os.Getenv("ENV") == "DEVELOPMENT" {
-		UserContext.Host = "manage.engg-az-dev2.riversand-dataplatform.com:7075"
-	}
+	UserContext.Host = os.Getenv("HOST")
+
 	return UserContext
 }

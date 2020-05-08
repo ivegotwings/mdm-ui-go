@@ -24,7 +24,6 @@ type Config struct {
 		Host string
 		Port string
 	}
-	NotificationInterval uint
 }
 
 func LoadConfiguration(file string) Config {
@@ -76,8 +75,9 @@ func main() {
 		utils.PrintInfo("Failed to create socket server: " + err.Error())
 		log.Fatal(err)
 	}
-
-	var config Config = LoadConfiguration("config.json")
+	var configfilename string = "config_" + os.Getenv("ENV") + ".json"
+	utils.PrintDebug("redis config file- %$", configfilename)
+	var config Config = LoadConfiguration(configfilename)
 	b, err := json.Marshal(config)
 	utils.PrintInfo("Redis Config: " + string(b))
 	//pre load the map once

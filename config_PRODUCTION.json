@@ -1,0 +1,6 @@
+{
+  "Redis": {
+    "Host": "redis-master",
+    "Port": "6379"
+  }
+}
