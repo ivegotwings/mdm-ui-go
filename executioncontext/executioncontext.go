@@ -1,6 +1,9 @@
 package executioncontext
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"net/http"
 	"os"
 )
@@ -38,6 +41,27 @@ type Context struct {
 // 	"defaultRole": defaultRole,
 // 	"isTrustBasedOnUserModel": isTrustBasedOnUserModel
 
+var authKey string
+
+func GetAuthKey() string {
+	if authKey != "" {
+		return authKey
+	} else {
+		//cryptoJS.HmacSHA256(url.split('?')[1], securityContext.clientAuthKey).toString(cryptoJS.enc.Base64)
+		clientAuthKey := "3218fa37-f809-4be4-b88e-653419b20e28"
+		h := hmac.New(sha256.New, []byte(clientAuthKey))
+		h.Write([]byte(""))
+		sha := encodeBase64(h.Sum(nil))
+		//fmt.Println("Result: " + sha)
+		authKey = sha
+	}
+	return authKey
+}
+
+func encodeBase64(b []byte) string {
+	return base64.StdEncoding.EncodeToString(b)
+}
+
 func GetContext(req *http.Request) Context {
 	UserContext := Context{
 		UserId:            req.Header.Get("x-rdp-userid"),
@@ -51,7 +75,6 @@ func GetContext(req *http.Request) Context {
 		OwnershipData:     req.Header.Get("x-rdp-ownershipdata"),
 		OwnershipEditData: req.Header.Get("x-rdp-ownershipeditdata"),
 		ClientId:          "rufClient",
-		ClientAuthKey:     "3218fa37-f809-4be4-b88e-653419b20e28",
 	}
 
 	UserContext.Host = os.Getenv("HOST")

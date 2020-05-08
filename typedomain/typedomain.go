@@ -305,7 +305,7 @@ func InitializeEntityTypeDomainMap(context executioncontext.Context) (map[string
 		req.Header.Set("x-rdp-firstName", context.FirstName)
 		req.Header.Set("x-rdp-lastName", context.LastName)
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("x-rdp-authtoken", "m4eZW93FLaUAUfoR1vYEEfwTXr1wdbedZNss0aId6CQ=")
+		req.Header.Set("x-rdp-authtoken", executioncontext.GetAuthKey())
 
 		client := &http.Client{
 			Timeout: 30 * time.Second,
@@ -380,7 +380,7 @@ func GetDomainForEntityType(entityType string, context executioncontext.Context)
 				req.Header.Set("x-rdp-firstName", context.FirstName)
 				req.Header.Set("x-rdp-lastName", context.LastName)
 				req.Header.Set("Content-Type", "application/json")
-				req.Header.Set("x-rdp-authtoken", "m4eZW93FLaUAUfoR1vYEEfwTXr1wdbedZNss0aId6CQ=")
+				req.Header.Set("x-rdp-authtoken", executioncontext.GetAuthKey())
 
 				client := &http.Client{
 					Timeout: 30 * time.Second,
